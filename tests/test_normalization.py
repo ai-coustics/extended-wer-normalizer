@@ -19,6 +19,7 @@ from extended_wer_normalizer.transforms import (
     NormalizeSymbols,
     NormalizeURLs,
     RemoveFillerWords,
+    SplitHyphenatedWords,
 )
 
 # ---------------------------------------------------------------------------
@@ -493,6 +494,114 @@ def test_symbol_zero_wer():
     ref = "cats and dogs"
     hyp = "cats & dogs"
     assert wer(ref, hyp) == 0.0, f"WER={wer(ref, hyp)}"
+
+
+# ===========================================================================
+# HYPHENATED COMPOUNDS
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("fixed-term", "fixed term"),
+        ("great-grandparents", "great grandparents"),
+        ("merry-go-round", "merry go round"),
+        ("state-of-the-art", "state of the art"),
+        ("3-kilogram", "3 kilogram"),
+        ("FL-9902", "FL 9902"),
+        # Only intra-word hyphens split; boundary hyphens pass through
+        # (RemovePunctuation drops them downstream).
+        ("-dangling", "-dangling"),
+        ("trailing-", "trailing-"),
+        ("well - known", "well - known"),
+    ],
+)
+def test_split_hyphenated_words(input_text, expected):
+    t = SplitHyphenatedWords()
+    assert t.process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("your fixed-term deposit", "your fixed term deposit"),
+        ("great-grandparents", "great grandparents"),
+        ("a 3-kilogram weight", "a 3 kilogram weight"),
+        ("a 4-hour shift", "a 4 hour shift"),
+        ("well-known, state-of-the-art!", "well known state of the art"),
+        # Boundary hyphens are dropped without joining the neighbors.
+        ("-dangling and trailing-", "dangling and trailing"),
+        # Alphanumeric IDs split symmetrically around the digit run.
+        ("FL-9902 and IC-6620", "fl 9 9 0 2 and ic 6 6 2 0"),
+        # Phone and date formats were already symmetric: digit runs expand
+        # identically whether the hyphen is split or deleted.
+        ("call 555-123-4567", "call 5 5 5 1 2 3 4 5 6 7"),
+        ("on 2026-09-28", "on 2 0 2 6 0 9 2 8"),
+        # Hyphenated number words still reach text2num with hyphens intact.
+        ("twenty-one", "2 1"),
+    ],
+)
+def test_hyphenated_compounds_normalize(input_text, expected):
+    assert normalize_for_wer(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        # Hyphenated vs spaced spellings of the same words must score zero in
+        # both directions (ML-1725).
+        ("your fixed-term deposit", "your fixed term deposit"),
+        ("your fixed term deposit", "your fixed-term deposit"),
+        ("state-of-the-art", "state of the art"),
+        ("a 3-kilogram weight", "a 3 kilogram weight"),
+        ("FL-9902", "fl 9902"),
+    ],
+)
+def test_hyphenated_compounds_zero_wer(ref, hyp):
+    score = wer(ref, hyp)
+    assert score == 0.0, (
+        f"\nWER={score:.4f} (expected 0.0)"
+        f"\n  ref: {ref!r} → {normalize_for_wer(ref)!r}"
+        f"\n  hyp: {hyp!r} → {normalize_for_wer(hyp)!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "ref, hyp, description",
+    [
+        ("great-grandparents", "great grandmothers", "one part of compound wrong"),
+        ("mother-in-law", "stepfather", "whole compound wrong"),
+        ("fixed-term", "variable rate", "different words entirely"),
+    ],
+)
+def test_hyphenated_compound_errors_have_nonzero_wer(ref, hyp, description):
+    score = wer(ref, hyp)
+    assert score > 0.0, f"[{description}] Expected WER > 0 but got {score}"
+
+
+@pytest.mark.parametrize(
+    "ref, hyp, language",
+    [
+        ("arc-en-ciel", "arc en ciel", "fr"),
+        ("E-Mail-Adresse", "e mail adresse", "de"),
+    ],
+)
+def test_hyphenated_compounds_zero_wer_other_languages(ref, hyp, language):
+    score = jiwer.wer(
+        normalize_for_wer(ref, language=language),
+        normalize_for_wer(hyp, language=language),
+    )
+    assert score == 0.0, f"[{language}] WER={score:.4f} (expected 0.0)"
+
+
+def test_hyphenated_compounds_idempotent():
+    once = normalize_for_wer("your fixed-term deposit, state-of-the-art!")
+    assert normalize_for_wer(once) == once
+
+
+def test_hyphen_split_applies_to_language_agnostic_fallback():
+    assert normalize_for_wer("fixed-term", language="es") == "fixed term"
 
 
 # ===========================================================================
