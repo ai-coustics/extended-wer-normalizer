@@ -63,6 +63,7 @@ wer = jiwer.wer(reference, hypothesis, reference_transform=english_wer_pipeline,
 | `NormalizeOrdinals` | `"1st"` → `"first"`, `"15th"` → `"fifteenth"` |
 | `ExpandAbbreviations` | `"Dr."` → `"doctor"`, `"vs."` → `"versus"` |
 | `NormalizeSymbols` | `"cats & dogs"` → `"cats and dogs"` |
+| `SplitHyphenatedWords` | `"fixed-term"` → `"fixed term"` |
 | `RemoveFillerWords` | removes `um`, `uh`, `hmm`, `er`, `ah`, … |
 | `CollapseRepetitions` | `"yes yes yes yes"` → `"yes"` (collapses runs of 4+; configurable via `max_repeats`) |
 | `ExpandFrenchElisions` | `"j'aime"` → `"j aime"`, `"qu'il"` → `"qu il"` (French only) |
@@ -74,7 +75,7 @@ Every transform that consumes language-specific data accepts a `language="en"` k
 The English pipeline applies transforms left-to-right in a single pass:
 
 1. **Pattern-specific** (before punctuation is stripped): email, URL, symbol, abbreviation, currency, percentage, ordinal
-2. **Core**: contractions (`I'm` → `i am`), lowercase, punctuation removal
+2. **Core**: contractions (`I'm` → `i am`), lowercase, intra-word hyphen split (`fixed-term` → `fixed term`), punctuation removal
 3. **Digit normalization**: expand digit runs (`0176` → `0 1 7 6`), convert digit words (`zero` → `0`)
 4. **Cleanup**: filler words, repetition collapse
 
@@ -123,6 +124,7 @@ get_language_data("de").abbreviations["hr."]  # "herr"
 
 ### Quirks worth knowing
 
+- **Hyphenated compounds**: intra-word hyphens split into spaces (`fixed-term` → `fixed term`), so hyphenated and spaced spellings of the same words score identically. Before 0.6.0 the hyphen was deleted (`fixedterm`), which penalized STTs that never emit hyphens — WER numbers are not comparable across that boundary.
 - **Comma vs. period decimals**: French uses `,` (`€5,99`, `3,5%`); the currency and percentage transforms accept either separator regardless of language.
 - **German ordinals**: matched as 1- to 3-digit numbers followed by `. ` and a word (e.g. `"1. Januar"` but not `"Es war 1990."` or `"1.5 Liter"`). 4+ digits and decimals are skipped to avoid false positives on years.
 - **French ordinals**: matched as `1er`, `1ère`, `2e`, `2es`, `2ème`, `2èmes`, `2nde`, `2nds`, `2nd`. `num2words` returns masculine forms (`premier`, `deuxième`); feminine variants like `première` or `seconde` are not produced.

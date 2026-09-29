@@ -19,6 +19,7 @@ from .transforms import (
     NormalizeSymbols,
     NormalizeURLs,
     RemoveFillerWords,
+    SplitHyphenatedWords,
 )
 
 __all__ = [
@@ -40,6 +41,7 @@ __all__ = [
     "NormalizeSymbols",
     "NormalizeURLs",
     "RemoveFillerWords",
+    "SplitHyphenatedWords",
 ]
 
 
@@ -51,12 +53,14 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
 
     Supported languages ("en", "de", "fr") get the full structure. Any other
     language falls back to a minimal language-agnostic pipeline: lowercase,
-    punctuation/whitespace cleanup, and repetition collapse.
+    intra-word hyphen splitting, punctuation/whitespace cleanup, and
+    repetition collapse.
     """
     if language not in supported_languages():
         return jiwer.Compose(
             [
                 jiwer.ToLowerCase(),
+                SplitHyphenatedWords(),
                 jiwer.RemovePunctuation(),
                 jiwer.RemoveMultipleSpaces(),
                 jiwer.Strip(),
@@ -93,6 +97,11 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
             # ExpandDigitRuns, matching the canonical form for "21".
             CompoundSpokenNumbersToDigits(language),
             jiwer.ToLowerCase(),
+            # Split "fixed-term" → "fixed term" before RemovePunctuation, which
+            # would otherwise delete the hyphen and join the parts. After
+            # CompoundSpokenNumbersToDigits so hyphenated number words
+            # ("twenty-one", "quatre-vingt-quatorze") keep their structure.
+            SplitHyphenatedWords(),
             jiwer.RemovePunctuation(),
             ExpandDigitRuns(),
             DigitWordsToChars(language),
@@ -123,15 +132,15 @@ def normalize_for_wer(
     """Normalize text for WER comparison.
 
     Supported full-pipeline languages: "en", "de", "fr". Each runs the same
-    structure (pattern normalization → lowercase → punctuation removal → digit
-    normalization → cleanup) with language-specific lexicons and a custom
-    contraction step (English contractions for "en", elision splitting for "fr",
-    none for "de").
+    structure (pattern normalization → lowercase → intra-word hyphen splitting →
+    punctuation removal → digit normalization → cleanup) with language-specific
+    lexicons and a custom contraction step (English contractions for "en",
+    elision splitting for "fr", none for "de").
 
     For any other `language` value, applies a minimal language-agnostic pipeline:
-    lowercase, punctuation removal, whitespace normalization, and repetition
-    collapse. Useful as a fallback for languages that don't yet have a tuned
-    data module.
+    lowercase, intra-word hyphen splitting, punctuation removal, whitespace
+    normalization, and repetition collapse. Useful as a fallback for languages
+    that don't yet have a tuned data module.
 
     `max_repeats` controls the repetition-collapse threshold: a word must repeat
     more than this many times in a row before the run is collapsed to a single

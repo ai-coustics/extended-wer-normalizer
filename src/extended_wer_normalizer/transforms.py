@@ -403,6 +403,35 @@ class NormalizeOrdinals(AbstractTransform):
 
 
 # ---------------------------------------------------------------------------
+# Hyphenated compounds
+# ---------------------------------------------------------------------------
+
+_INTRA_WORD_HYPHEN_RE = re.compile(r"(?<=\w)-(?=\w)")
+
+
+class SplitHyphenatedWords(AbstractTransform):
+    """Split intra-word hyphens into spaces: "fixed-term" → "fixed term".
+
+    jiwer's `RemovePunctuation` deletes "-" without inserting a space, joining
+    hyphenated compounds into one token ("fixed-term" → "fixedterm"). A
+    hypothesis writing the same compound with a space then scores as
+    substitution + insertion although the words are identical. Splitting first
+    makes both spellings normalize to the same tokens.
+
+    Only hyphens between word characters are split; boundary hyphens
+    ("-dangling", "trailing -") are left for `RemovePunctuation` to drop.
+    Must run after `CompoundSpokenNumbersToDigits`, which needs hyphens intact
+    to parse hyphenated number words ("twenty-one", "quatre-vingt-quatorze"),
+    and before `RemovePunctuation`.
+
+    Language-agnostic.
+    """
+
+    def process_string(self, s: str) -> str:
+        return _INTRA_WORD_HYPHEN_RE.sub(" ", s)
+
+
+# ---------------------------------------------------------------------------
 # French elision contractions
 # ---------------------------------------------------------------------------
 
