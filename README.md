@@ -22,6 +22,30 @@ normalize_for_wer("Um, 1st place goes to Dr. Smith with 50% accuracy")
 # → "first place goes to doctor smith with fifty percent accuracy"
 ```
 
+## Command line
+
+The package installs an `extended-wer-normalizer` CLI (also runnable as
+`python -m extended_wer_normalizer`):
+
+```bash
+extended-wer-normalizer 'Call 0176 or email info@example.com'
+# → call 0 1 7 6 or email info at example dot com
+
+extended-wer-normalizer 'Hr. Müller, am 1. Januar' --language de
+# → herr müller am erste januar
+
+cat transcripts.txt | extended-wer-normalizer -l fr      # stdin, line by line
+extended-wer-normalizer --file transcripts.txt -l fr > normalized.txt
+
+extended-wer-normalizer --describe -l de                 # ordered transform list
+extended-wer-normalizer --list-languages                 # de, en, fr
+```
+
+Exit codes: `0` success, `1` runtime error (e.g. unreadable file), `2` usage
+error (missing or conflicting inputs). Diagnostics go to stderr; stdout
+carries only normalized text, so the CLI composes with `| diff`, `| wc -l`,
+etc.
+
 ## jiwer integration
 
 Every normalization is a `jiwer.AbstractTransform` subclass — compose them freely:

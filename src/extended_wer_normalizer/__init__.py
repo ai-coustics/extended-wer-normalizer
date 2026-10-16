@@ -23,6 +23,7 @@ from .transforms import (
 )
 
 __all__ = [
+    "get_pipeline",
     "normalize_for_wer",
     "supported_languages",
     "english_wer_pipeline",
@@ -126,6 +127,19 @@ _PIPELINES: dict[str, jiwer.Compose] = {
 }
 
 
+def get_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> jiwer.Compose:
+    """Return the WER-normalization pipeline for `language`.
+
+    The prebuilt shared pipelines are returned for the default `max_repeats`;
+    a custom threshold or an unsupported language builds a one-off pipeline.
+    Unsupported languages get the minimal language-agnostic fallback described
+    in `normalize_for_wer`.
+    """
+    if max_repeats == DEFAULT_MAX_REPEATS and language in _PIPELINES:
+        return _PIPELINES[language]
+    return _build_pipeline(language, max_repeats)
+
+
 def normalize_for_wer(
     text: str, language: str = "en", max_repeats: int = DEFAULT_MAX_REPEATS
 ) -> str:
@@ -146,10 +160,4 @@ def normalize_for_wer(
     more than this many times in a row before the run is collapsed to a single
     occurrence (default 3, i.e. runs of 4+ collapse). See `CollapseRepetitions`.
     """
-    # Reuse the prebuilt pipelines for the default threshold; build a one-off
-    # only when a custom max_repeats or an unsupported language is requested.
-    if max_repeats == DEFAULT_MAX_REPEATS and language in _PIPELINES:
-        pipeline = _PIPELINES[language]
-    else:
-        pipeline = _build_pipeline(language, max_repeats)
-    return pipeline([text])[0].strip()
+    return get_pipeline(language, max_repeats)([text])[0].strip()
