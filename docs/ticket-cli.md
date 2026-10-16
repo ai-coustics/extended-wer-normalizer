@@ -35,8 +35,8 @@ positional text, `--file`, stdin piping, `--language`, `--describe`.
 ## Proposed interface
 
 ```bash
-# Positional text
-extended-wer-normalizer "Call 0176 or email info@example.com, it costs $5.99"
+# Positional text (single quotes, so the shell doesn't expand "$5")
+extended-wer-normalizer 'Call 0176 or email info@example.com, it costs $5.99'
 # → call 0 1 7 6 or email info at example dot com it costs five dollars ninety nine cents
 
 # Language selection (default: en)
@@ -45,8 +45,8 @@ extended-wer-normalizer "Hr. Müller, am 1. Januar, ungefähr 50% Rabatt" --lang
 # stdin (line-by-line, line structure preserved)
 cat transcripts.txt | extended-wer-normalizer -l fr
 
-# File input
-extended-wer-normalizer --file transcripts.txt --language fr --output normalized.txt
+# File input (shell redirect keeps stdout the single output channel)
+extended-wer-normalizer --file transcripts.txt --language fr > normalized.txt
 
 # Introspection
 extended-wer-normalizer --describe --language de   # ordered transform list
@@ -59,9 +59,11 @@ extended-wer-normalizer "no no no" --max-repeats 1
 ## Acceptance criteria
 
 - [ ] `[project.scripts]` entry point: `extended-wer-normalizer = "extended_wer_normalizer.cli:main"`.
-- [ ] Input is exactly one of: positional `TEXT`, `--file PATH`, or stdin
-      (auto-detected when not a TTY). Zero or conflicting inputs → usage error
-      on stderr, exit code 2.
+- [ ] In normalization mode, input is exactly one of: positional `TEXT`,
+      `--file PATH`, or stdin (auto-detected when not a TTY). Zero or
+      conflicting inputs → usage error on stderr, exit code 2. Introspection
+      modes (`--describe`, `--list-languages`) take no input and are exempt
+      from this rule.
 - [ ] `--language/-l` accepts any code; known codes (`de`, `en`, `fr`) use the
       full pipeline, unknown codes use the minimal fallback and print a
       one-line notice to **stderr** (stdout stays machine-clean).
