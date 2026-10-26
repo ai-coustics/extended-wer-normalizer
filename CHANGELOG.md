@@ -13,7 +13,7 @@ Versions before 0.6.0 predate this changelog.
 - **English US/UK spelling-variant canonicalization** (British → American):
   `travelling` → `traveling`, `colour` → `color`, `centre` → `center`.
   Previously, a hypothesis and reference differing only in dialect spelling
-  scored one substitution per differing word. The 1,738-entry table is
+  scored one substitution per differing word. The 1,737-entry table is
   based on OpenAI Whisper's `whisper/normalizers/english.json` (MIT) —
   the same source gladiaio/normalization draws on — with a small number of
   documented corrections to upstream entries that change morphology rather
