@@ -623,6 +623,9 @@ def test_hyphen_split_applies_to_language_agnostic_fallback():
         # Already-American spellings pass through unchanged.
         ("traveling", "traveling"),
         ("color", "color"),
+        # Adverb is spelt the same in US English; upstream's mapping to the
+        # noun "tranquility" is one of our documented deviations.
+        ("tranquilly", "tranquilly"),
         # Exact whole-token match only: "coloury" contains "colour" but is not
         # a table key, so a substring replace would corrupt it to "colory".
         ("coloury", "coloury"),
@@ -659,6 +662,10 @@ def test_spelling_variants_normalize_full_pipeline(input_text, expected):
         ("the colour of the centre", "the color of the center"),
         ("organised behaviour", "organized behavior"),
         ("my favourite aeroplane", "my favorite airplane"),
+        # Corrected upstream entries: inflection preserved, not just spelling.
+        ("pummelled", "pummeled"),
+        ("pummelling", "pummeling"),
+        ("snowploughs", "snowplows"),
     ],
 )
 def test_spelling_variants_zero_wer(ref, hyp):
@@ -698,16 +705,14 @@ def test_spelling_variants_idempotent():
     assert normalize_for_wer(once) == once
 
 
-def test_spelling_table_preserves_upstream_verbatim():
-    # The table vendors Whisper's english.json verbatim for comparability
-    # with Whisper/Gladia-normalized text (see en_spelling_variants.py
-    # header). These locks catch well-meaning "fixes" of known upstream
-    # quirks, which would silently break that parity.
-    assert EN_SPELLING_VARIANTS["pummelled"] == "pummel"
-    assert EN_SPELLING_VARIANTS["pummelling"] == "pummeled"
-    assert EN_SPELLING_VARIANTS["snowploughs"] == "snowplow"
-    assert EN_SPELLING_VARIANTS["tranquilly"] == "tranquility"
-    # The two deliberate deviations (scraping artifacts; see header).
+def test_spelling_table_documented_deviations():
+    # Locks the deliberate deviations from Whisper's english.json listed in
+    # the en_spelling_variants.py header. Re-vendoring the upstream table
+    # would reintroduce the morphology-changing mappings below and fail here.
+    assert EN_SPELLING_VARIANTS["pummelled"] == "pummeled"
+    assert EN_SPELLING_VARIANTS["pummelling"] == "pummeling"
+    assert EN_SPELLING_VARIANTS["snowploughs"] == "snowplows"
+    assert "tranquilly" not in EN_SPELLING_VARIANTS
     assert EN_SPELLING_VARIANTS["archaeology"] == "archeology"
     assert "flyer / flier" not in EN_SPELLING_VARIANTS
 

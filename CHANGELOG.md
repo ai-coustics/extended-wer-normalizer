@@ -14,12 +14,14 @@ Versions before 0.6.0 predate this changelog.
   `travelling` → `traveling`, `colour` → `color`, `centre` → `center`.
   Previously, a hypothesis and reference differing only in dialect spelling
   scored one substitution per differing word. The 1,738-entry table is
-  adapted from OpenAI Whisper's `whisper/normalizers/english.json` (MIT) —
-  the same source gladiaio/normalization draws on. Entries are verbatim
-  upstream (including known upstream quirks like `pummelled` → `pummel`)
-  to preserve comparability with Whisper/Gladia-normalized text; the only
-  deviations are two scraping artifacts (`archaeology` and a malformed
-  `flyer / flier` row; see `languages/en_spelling_variants.py`).
+  based on OpenAI Whisper's `whisper/normalizers/english.json` (MIT) —
+  the same source gladiaio/normalization draws on — with a small number of
+  documented corrections to upstream entries that change morphology rather
+  than spelling (`pummelled` → `pummeled`, `pummelling` → `pummeling`,
+  `snowploughs` → `snowplows`, and the `tranquilly` → `tranquility`
+  mapping removed) plus two scraping-artifact cleanups; see
+  `languages/en_spelling_variants.py` for the full deviation list.
+  Normalized output diverges from Whisper/Gladia on exactly those tokens.
 - New transform `NormalizeSpellingVariants`, applied in the full pipelines
   after punctuation removal. No-op for languages without a table (currently
   de, fr) and not part of the minimal fallback pipeline.

@@ -1,36 +1,37 @@
 """British -> American spelling variants for English WER normalization.
 
-Vendored from OpenAI Whisper's `whisper/normalizers/english.json`
-(https://github.com/openai/whisper, MIT license, (c) OpenAI). Whisper ships
-this table in its `EnglishSpellingNormalizer` so that dialect spelling
-differences ("travelling" vs. "traveling") do not count as transcription
-errors; we reuse it for the same purpose. gladiaio/normalization's
+Based on OpenAI Whisper's `whisper/normalizers/english.json`
+(https://github.com/openai/whisper, MIT license, (c) OpenAI), with
+documented corrections. Whisper ships this table in its
+`EnglishSpellingNormalizer` so that dialect spelling differences
+("travelling" vs. "traveling") do not count as transcription errors; we
+reuse it for the same purpose. gladiaio/normalization's
 `ENGLISH_REPLACEMENTS` is this same table plus 42 unrelated abbreviation /
 colloquial additions (e.g. ``dr -> doctor``, ``cannot -> could not``),
 which we deliberately do not adopt.
 
-Verbatim-parity policy: entries match upstream EXACTLY, including known
-upstream data bugs such as ``pummelled -> pummel`` (tense change),
-``snowploughs -> snowplow`` (plural -> singular), and
-``tranquilly -> tranquility`` (adverb -> noun). WER comparability with
-Whisper/Gladia-normalized text outranks per-entry correctness for these
-rare tokens — do NOT "fix" individual entries without an explicit
-WER-comparability versioning decision (see CHANGELOG).
+Deviations from the upstream Whisper table — each also marked inline at
+the affected entry. Upstream mappings that change morphology rather than
+spelling are corrected so only dialect spelling is canonicalized:
 
-Only two deviations from upstream, both forced by scraping artifacts:
-
+- ``pummelled -> pummeled`` (upstream: ``pummel``) and
+  ``pummelling -> pummeling`` (upstream: ``pummeled``): upstream drops or
+  shifts the inflection; we preserve tense.
+- ``snowploughs -> snowplows`` (upstream: ``snowplow``): preserve plural.
+- ``tranquilly`` entry removed (upstream maps it to the noun
+  ``tranquility``): the adverb is spelt the same in American English, so
+  the upstream mapping masks real recognition errors.
+- ``archaeology -> archeology``: upstream value is ``"archeology</span>"``
+  (HTML scraping artifact), cleaned.
 - Dropped the row keyed ``"flyer / flier"`` (value ``"flier / flyer"``):
   the key contains spaces, so it can never match a token in any
-  whitespace-tokenized application (ours, Whisper's, or Gladia's) --
-  dropping it changes no output anywhere. We also do NOT add
-  ``flier -> flyer`` the way Gladia does: "flier" is legitimate American
-  spelling ("frequent flier"), so that mapping is a style choice, not a
-  dialect canonicalization.
-- Fixed ``archaeology``: upstream value is ``"archeology</span>"`` (HTML
-  fragment). Our transform runs AFTER punctuation removal, so a verbatim
-  value would inject literal ``</span>`` characters into normalized output
-  (in Whisper's own pipeline the map runs before punctuation stripping,
-  where the artifact degrades differently). Cleaned to ``"archeology"``.
+  whitespace-tokenized application (ours, Whisper's, or Gladia's). We also
+  do NOT add ``flier -> flyer`` the way Gladia does: "flier" is legitimate
+  American spelling ("frequent flier"), so that mapping is a style choice,
+  not a dialect canonicalization.
+
+These deviations mean normalized output intentionally diverges from
+Whisper/Gladia on exactly these tokens; everything else matches.
 
 All keys and values are single lowercase alphabetic tokens, which lets
 `NormalizeSpellingVariants` do a plain per-token dict lookup.
@@ -1315,8 +1316,8 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "pulverised": "pulverized",
     "pulverises": "pulverizes",
     "pulverising": "pulverizing",
-    "pummelled": "pummel",
-    "pummelling": "pummeled",
+    "pummelled": "pummeled",  # deviates from Whisper ("pummel"): preserve past tense
+    "pummelling": "pummeling",  # deviates from Whisper ("pummeled"): preserve gerund
     "pyjama": "pajama",
     "pyjamas": "pajamas",
     "pzazz": "pizzazz",
@@ -1487,7 +1488,7 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "snorkelled": "snorkeled",
     "snorkelling": "snorkeling",
     "snowplough": "snowplow",
-    "snowploughs": "snowplow",
+    "snowploughs": "snowplows",  # deviates from Whisper ("snowplow"): preserve plural
     "socialisation": "socialization",
     "socialise": "socialize",
     "socialised": "socialized",
@@ -1643,7 +1644,9 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "tranquillizers": "tranquilizers",
     "tranquillizes": "tranquilizes",
     "tranquillizing": "tranquilizing",
-    "tranquilly": "tranquility",
+    # deviates from Whisper: no "tranquilly" -> "tranquility" entry. The
+    # adverb is spelt the same in American English; upstream's mapping
+    # rewrites it to the noun and masks real recognition errors.
     "transistorised": "transistorized",
     "traumatise": "traumatize",
     "traumatised": "traumatized",
