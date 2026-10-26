@@ -683,10 +683,7 @@ def test_spelling_variant_errors_have_nonzero_wer(ref, hyp, description):
 def test_spelling_variants_noop_for_other_languages(language):
     # Only English ships a spelling-variant table; other pipelines must not
     # rewrite these tokens.
-    assert (
-        normalize_for_wer("travelling colour", language=language)
-        == "travelling colour"
-    )
+    assert normalize_for_wer("travelling colour", language=language) == "travelling colour"
 
 
 def test_spelling_variants_not_in_language_agnostic_fallback():
