@@ -15,9 +15,11 @@ Versions before 0.6.0 predate this changelog.
   Previously, a hypothesis and reference differing only in dialect spelling
   scored one substitution per differing word. The 1,738-entry table is
   adapted from OpenAI Whisper's `whisper/normalizers/english.json` (MIT) —
-  the same source gladiaio/normalization draws on — with two upstream
-  scraping artifacts fixed (`archaeology` and a malformed `flyer / flier`
-  row; see `languages/en_spelling_variants.py`).
+  the same source gladiaio/normalization draws on. Entries are verbatim
+  upstream (including known upstream quirks like `pummelled` → `pummel`)
+  to preserve comparability with Whisper/Gladia-normalized text; the only
+  deviations are two scraping artifacts (`archaeology` and a malformed
+  `flyer / flier` row; see `languages/en_spelling_variants.py`).
 - New transform `NormalizeSpellingVariants`, applied in the full pipelines
   after punctuation removal. No-op for languages without a table (currently
   de, fr) and not part of the minimal fallback pipeline.

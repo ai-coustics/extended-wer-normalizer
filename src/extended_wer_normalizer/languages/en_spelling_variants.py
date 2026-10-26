@@ -1,20 +1,36 @@
 """British -> American spelling variants for English WER normalization.
 
-Adapted from OpenAI Whisper's `whisper/normalizers/english.json`
+Vendored from OpenAI Whisper's `whisper/normalizers/english.json`
 (https://github.com/openai/whisper, MIT license, (c) OpenAI). Whisper ships
 this table in its `EnglishSpellingNormalizer` so that dialect spelling
 differences ("travelling" vs. "traveling") do not count as transcription
-errors; we reuse it for the same purpose.
+errors; we reuse it for the same purpose. gladiaio/normalization's
+`ENGLISH_REPLACEMENTS` is this same table plus 42 unrelated abbreviation /
+colloquial additions (e.g. ``dr -> doctor``, ``cannot -> could not``),
+which we deliberately do not adopt.
 
-Deviations from the upstream table (both fix scraping artifacts):
+Verbatim-parity policy: entries match upstream EXACTLY, including known
+upstream data bugs such as ``pummelled -> pummel`` (tense change),
+``snowploughs -> snowplow`` (plural -> singular), and
+``tranquilly -> tranquility`` (adverb -> noun). WER comparability with
+Whisper/Gladia-normalized text outranks per-entry correctness for these
+rare tokens — do NOT "fix" individual entries without an explicit
+WER-comparability versioning decision (see CHANGELOG).
 
-- Dropped the row keyed ``"flyer / flier"`` (value ``"flier / flyer"``) --
-  neither side is a single word. We deliberately do NOT add ``flier ->
-  flyer`` the way gladiaio/normalization does: "flier" is legitimate
-  American spelling ("frequent flier"), so that mapping is a style choice,
-  not a dialect canonicalization.
+Only two deviations from upstream, both forced by scraping artifacts:
+
+- Dropped the row keyed ``"flyer / flier"`` (value ``"flier / flyer"``):
+  the key contains spaces, so it can never match a token in any
+  whitespace-tokenized application (ours, Whisper's, or Gladia's) --
+  dropping it changes no output anywhere. We also do NOT add
+  ``flier -> flyer`` the way Gladia does: "flier" is legitimate American
+  spelling ("frequent flier"), so that mapping is a style choice, not a
+  dialect canonicalization.
 - Fixed ``archaeology``: upstream value is ``"archeology</span>"`` (HTML
-  fragment), cleaned to ``"archeology"``.
+  fragment). Our transform runs AFTER punctuation removal, so a verbatim
+  value would inject literal ``</span>`` characters into normalized output
+  (in Whisper's own pipeline the map runs before punctuation stripping,
+  where the artifact degrades differently). Cleaned to ``"archeology"``.
 
 All keys and values are single lowercase alphabetic tokens, which lets
 `NormalizeSpellingVariants` do a plain per-token dict lookup.

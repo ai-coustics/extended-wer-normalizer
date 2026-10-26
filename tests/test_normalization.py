@@ -9,6 +9,9 @@ import jiwer
 import pytest
 
 from extended_wer_normalizer import normalize_for_wer
+from extended_wer_normalizer.languages.en_spelling_variants import (
+    EN_SPELLING_VARIANTS,
+)
 from extended_wer_normalizer.transforms import (
     CollapseRepetitions,
     ExpandAbbreviations,
@@ -693,6 +696,20 @@ def test_spelling_variants_not_in_language_agnostic_fallback():
 def test_spelling_variants_idempotent():
     once = normalize_for_wer("travelling to the centre, my favourite colour")
     assert normalize_for_wer(once) == once
+
+
+def test_spelling_table_preserves_upstream_verbatim():
+    # The table vendors Whisper's english.json verbatim for comparability
+    # with Whisper/Gladia-normalized text (see en_spelling_variants.py
+    # header). These locks catch well-meaning "fixes" of known upstream
+    # quirks, which would silently break that parity.
+    assert EN_SPELLING_VARIANTS["pummelled"] == "pummel"
+    assert EN_SPELLING_VARIANTS["pummelling"] == "pummeled"
+    assert EN_SPELLING_VARIANTS["snowploughs"] == "snowplow"
+    assert EN_SPELLING_VARIANTS["tranquilly"] == "tranquility"
+    # The two deliberate deviations (scraping artifacts; see header).
+    assert EN_SPELLING_VARIANTS["archaeology"] == "archeology"
+    assert "flyer / flier" not in EN_SPELLING_VARIANTS
 
 
 # ===========================================================================
