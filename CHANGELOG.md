@@ -6,6 +6,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Versions before 0.6.0 predate this changelog.
 
+## [Unreleased]
+
+### Added
+
+- **English US/UK spelling-variant canonicalization** (British → American):
+  `travelling` → `traveling`, `colour` → `color`, `centre` → `center`.
+  Previously, a hypothesis and reference differing only in dialect spelling
+  scored one substitution per differing word. The 1,738-entry table is
+  adapted from OpenAI Whisper's `whisper/normalizers/english.json` (MIT) —
+  the same source gladiaio/normalization draws on — with two upstream
+  scraping artifacts fixed (`archaeology` and a malformed `flyer / flier`
+  row; see `languages/en_spelling_variants.py`).
+- New transform `NormalizeSpellingVariants`, applied in the full pipelines
+  after punctuation removal. No-op for languages without a table (currently
+  de, fr) and not part of the minimal fallback pipeline.
+- **WER numbers computed with ≤ 0.6.0 are not comparable to ≥ 0.7.0 for
+  English text containing dialect spelling variation** — such pairs now
+  score zero instead of one substitution per word. Recompute cached results
+  before comparing across the boundary.
+
 ## [0.6.0] - 2026-09-28
 
 ### Changed

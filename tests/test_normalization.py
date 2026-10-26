@@ -2,7 +2,7 @@
 
 Number normalization tests ported from aicpy/tests/test_wer_normalization.py.
 Additional tests cover email, URL, filler, abbreviation, currency, ordinal,
-percentage, and symbol normalizations.
+percentage, symbol, hyphen-compound, and spelling-variant normalizations.
 """
 
 import jiwer
@@ -16,6 +16,7 @@ from extended_wer_normalizer.transforms import (
     NormalizeEmails,
     NormalizeOrdinals,
     NormalizePercentages,
+    NormalizeSpellingVariants,
     NormalizeSymbols,
     NormalizeURLs,
     RemoveFillerWords,
@@ -605,6 +606,99 @@ def test_hyphen_split_applies_to_language_agnostic_fallback():
 
 
 # ===========================================================================
+# SPELLING VARIANTS (US/UK)
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("travelling", "traveling"),
+        ("colour", "color"),
+        ("centre", "center"),
+        ("organised behaviour", "organized behavior"),
+        # Already-American spellings pass through unchanged.
+        ("traveling", "traveling"),
+        ("color", "color"),
+        # Exact whole-token match only: "coloury" contains "colour" but is not
+        # a table key, so a substring replace would corrupt it to "colory".
+        ("coloury", "coloury"),
+        ("travel", "travel"),
+        ("", ""),
+    ],
+)
+def test_normalize_spelling_variants(input_text, expected):
+    t = NormalizeSpellingVariants()
+    assert t.process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("Travelling", "traveling"),
+        # Punctuation is removed before the lookup, so attached punctuation
+        # does not shield a variant from matching.
+        ("travelling, travelling.", "traveling traveling"),
+        ("the Colour of the Centre", "the color of the center"),
+    ],
+)
+def test_spelling_variants_normalize_full_pipeline(input_text, expected):
+    assert normalize_for_wer(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        # British vs American spellings of the same words must score zero in
+        # both directions.
+        ("I am travelling to London", "I am traveling to London"),
+        ("I am traveling to London", "I am travelling to London"),
+        ("the colour of the centre", "the color of the center"),
+        ("organised behaviour", "organized behavior"),
+        ("my favourite aeroplane", "my favorite airplane"),
+    ],
+)
+def test_spelling_variants_zero_wer(ref, hyp):
+    score = wer(ref, hyp)
+    assert score == 0.0, (
+        f"\nWER={score:.4f} (expected 0.0)"
+        f"\n  ref: {ref!r} → {normalize_for_wer(ref)!r}"
+        f"\n  hyp: {hyp!r} → {normalize_for_wer(hyp)!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "ref, hyp, description",
+    [
+        ("travelling", "flying", "different word entirely"),
+        ("the colour", "the smell", "one word wrong"),
+    ],
+)
+def test_spelling_variant_errors_have_nonzero_wer(ref, hyp, description):
+    score = wer(ref, hyp)
+    assert score > 0.0, f"[{description}] Expected WER > 0 but got {score}"
+
+
+@pytest.mark.parametrize("language", ["de", "fr"])
+def test_spelling_variants_noop_for_other_languages(language):
+    # Only English ships a spelling-variant table; other pipelines must not
+    # rewrite these tokens.
+    assert (
+        normalize_for_wer("travelling colour", language=language)
+        == "travelling colour"
+    )
+
+
+def test_spelling_variants_not_in_language_agnostic_fallback():
+    assert normalize_for_wer("travelling", language="es") == "travelling"
+
+
+def test_spelling_variants_idempotent():
+    once = normalize_for_wer("travelling to the centre, my favourite colour")
+    assert normalize_for_wer(once) == once
+
+
+# ===========================================================================
 # IDEMPOTENCE — all new transforms applied twice = applied once
 # ===========================================================================
 
@@ -616,6 +710,7 @@ def test_hyphen_split_applies_to_language_agnostic_fallback():
         "1st place Dr. Smith with 100% at https://example.com",
         "um I I think it costs $3.50",
         "visit https://my-site.org or call us",
+        "I am travelling to the centre, my favourite colour",
     ],
 )
 def test_full_pipeline_idempotent(text):

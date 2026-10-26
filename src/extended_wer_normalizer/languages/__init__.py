@@ -7,7 +7,7 @@ regexes, and lookup tables that the parameterized transforms in
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from re import Pattern
 
 
@@ -22,6 +22,10 @@ class LanguageData:
     Compound-number conversion (`CompoundSpokenNumbersToDigits`) is keyed off
     `code` directly: the transform delegates to `text2num.alpha2digit`, which
     embeds the per-language number grammar.
+
+    `spelling_variants` maps dialect spellings to one canonical form
+    (English: British → American). Languages without such a map leave it
+    empty, making `NormalizeSpellingVariants` a no-op for them.
     """
 
     code: str
@@ -36,6 +40,7 @@ class LanguageData:
     currency_plurals: dict[str, str]
     word_for_percent: str
     ordinal_re: Pattern[str]
+    spelling_variants: dict[str, str] = field(default_factory=dict)
 
 
 _REGISTRY: dict[str, LanguageData] = {}

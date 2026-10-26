@@ -2,7 +2,7 @@
 
 jiwer-compatible text normalizer for Word Error Rate (WER) evaluation in voice AI.
 
-Extends [jiwer](https://github.com/jitsi/jiwer)'s built-in transforms with normalizations that matter for real-world ASR evaluation: phone numbers, emails, URLs, currency, percentages, ordinals, filler words, and stuttering.
+Extends [jiwer](https://github.com/jitsi/jiwer)'s built-in transforms with normalizations that matter for real-world ASR evaluation: phone numbers, emails, URLs, currency, percentages, ordinals, filler words, stuttering, and US/UK spelling variants.
 
 ## Installation
 
@@ -64,6 +64,7 @@ wer = jiwer.wer(reference, hypothesis, reference_transform=english_wer_pipeline,
 | `ExpandAbbreviations` | `"Dr."` → `"doctor"`, `"vs."` → `"versus"` |
 | `NormalizeSymbols` | `"cats & dogs"` → `"cats and dogs"` |
 | `SplitHyphenatedWords` | `"fixed-term"` → `"fixed term"` |
+| `NormalizeSpellingVariants` | `"travelling"` → `"traveling"`, `"colour"` → `"color"` (British → American; English only) |
 | `RemoveFillerWords` | removes `um`, `uh`, `hmm`, `er`, `ah`, … |
 | `CollapseRepetitions` | `"yes yes yes yes"` → `"yes"` (collapses runs of 4+; configurable via `max_repeats`) |
 | `ExpandFrenchElisions` | `"j'aime"` → `"j aime"`, `"qu'il"` → `"qu il"` (French only) |
@@ -76,8 +77,9 @@ The English pipeline applies transforms left-to-right in a single pass:
 
 1. **Pattern-specific** (before punctuation is stripped): email, URL, symbol, abbreviation, currency, percentage, ordinal
 2. **Core**: contractions (`I'm` → `i am`), lowercase, intra-word hyphen split (`fixed-term` → `fixed term`), punctuation removal
-3. **Digit normalization**: expand digit runs (`0176` → `0 1 7 6`), convert digit words (`zero` → `0`)
-4. **Cleanup**: filler words, repetition collapse
+3. **Spelling variants** (English only): British → American (`travelling` → `traveling`)
+4. **Digit normalization**: expand digit runs (`0176` → `0 1 7 6`), convert digit words (`zero` → `0`)
+5. **Cleanup**: filler words, repetition collapse
 
 ## Supported languages
 
@@ -125,6 +127,7 @@ get_language_data("de").abbreviations["hr."]  # "herr"
 ### Quirks worth knowing
 
 - **Hyphenated compounds**: intra-word hyphens split into spaces (`fixed-term` → `fixed term`), so hyphenated and spaced spellings of the same words score identically. Before 0.6.0 the hyphen was deleted (`fixedterm`), which penalized STTs that never emit hyphens — WER numbers are not comparable across that boundary.
+- **US/UK spelling variants**: English canonicalizes British spellings to American (`travelling` → `traveling`, `colour` → `color`, `centre` → `center`), so dialect-only differences score zero. The 1,738-entry table is adapted from OpenAI Whisper's `english.json` (MIT) — the same source Gladia's normalizer uses. As with the hyphen change, WER numbers are not comparable across the boundary (introduced in 0.7.0).
 - **Comma vs. period decimals**: French uses `,` (`€5,99`, `3,5%`); the currency and percentage transforms accept either separator regardless of language.
 - **German ordinals**: matched as 1- to 3-digit numbers followed by `. ` and a word (e.g. `"1. Januar"` but not `"Es war 1990."` or `"1.5 Liter"`). 4+ digits and decimals are skipped to avoid false positives on years.
 - **French ordinals**: matched as `1er`, `1ère`, `2e`, `2es`, `2ème`, `2èmes`, `2nde`, `2nds`, `2nd`. `num2words` returns masculine forms (`premier`, `deuxième`); feminine variants like `première` or `seconde` are not produced.
