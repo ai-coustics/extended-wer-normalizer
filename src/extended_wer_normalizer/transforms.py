@@ -419,11 +419,13 @@ class NormalizeCurrency(AbstractTransform):
                 amount = _num2words(Decimal(f"{major}.{minor_str}"), self._language)
                 return f"{amount} {_pluralize(unit_major, 2, self._plurals)}"
 
-            parts = [f"{n2w(major)} {_pluralize(unit_major, major, self._plurals)}"]
-            if minor_str:
-                minor = int(minor_str.ljust(2, "0"))
-                if minor > 0 and unit_minor:
-                    parts.append(f"{n2w(minor)} {_pluralize(unit_minor, minor, self._plurals)}")
+            minor = int(minor_str.ljust(2, "0")) if minor_str else 0
+            parts = []
+            # "$0.50" is spoken "fifty cents", not "zero dollars fifty cents".
+            if major > 0 or not (minor and unit_minor):
+                parts.append(f"{n2w(major)} {_pluralize(unit_major, major, self._plurals)}")
+            if minor > 0 and unit_minor:
+                parts.append(f"{n2w(minor)} {_pluralize(unit_minor, minor, self._plurals)}")
             return " ".join(parts)
 
         def _bare(match: re.Match[str]) -> str:

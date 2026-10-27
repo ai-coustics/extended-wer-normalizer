@@ -473,6 +473,21 @@ def test_spoken_currency_conjunction_converges(language, written, spoken):
 
 
 @pytest.mark.parametrize(
+    "language, written, spoken",
+    [
+        ("en", "$0.50", "fifty cents"),
+        ("en", "$0.01", "one cent"),
+        ("en", "$0", "zero dollars"),
+        ("en", "$0.00", "zero dollars"),
+        ("de", "0,99 €", "neunundneunzig Cent"),
+        ("fr", "0,50 €", "cinquante centimes"),
+    ],
+)
+def test_zero_major_amount_is_not_spoken(language, written, spoken):
+    assert normalize_for_wer(written, language) == normalize_for_wer(spoken, language)
+
+
+@pytest.mark.parametrize(
     "language, text",
     [
         ("en", "dollars and cents"),
