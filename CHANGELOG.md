@@ -13,9 +13,10 @@ thousands and large English amounts all normalize differently.
 
 ### Added
 
-- `RemoveThousandsSeparators` and `NormalizeDecimals` transforms, plus the
-  `thousands_separators` / `decimal_word` fields on `LanguageData`
-  (en `,` / `point`; de `.` / `komma`; fr space, no-break space / `virgule`).
+- `RemoveThousandsSeparators`, `NormalizeDecimals` and
+  `DropCurrencyConjunction` transforms, plus the `thousands_separators` /
+  `decimal_word` fields on `LanguageData` (en `,` / `point`; de `.` /
+  `komma`; fr space, no-break space / `virgule`).
 
 ### Changed
 
@@ -44,6 +45,12 @@ thousands and large English amounts all normalize differently.
   instead of matching "zwanzig euro" (`2 0 euro`). A bare symbol with no
   amount becomes the unit name (`in €` → `in euro`) instead of surviving
   as a stray `€`. New `LanguageData.currency_symbol_trailing` field.
+- Spoken amounts joining the major and minor amounts with "and" ("five
+  dollars and ninety nine cents"; German "und", French "et") now match the
+  written form (`$5.99`) via the new `DropCurrencyConjunction` transform and
+  `LanguageData.currency_conjunction` field.
+- `£` minor amounts verbalize as "pence" rather than "pennies" (`£10.50` →
+  "ten pounds fifty pence"), matching how British amounts are spoken.
 
 ## [0.7.0] - 2026-10-27
 

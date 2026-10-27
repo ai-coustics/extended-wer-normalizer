@@ -438,6 +438,34 @@ class NormalizeCurrency(AbstractTransform):
         return self._symbols.get(symbol, ("dollar", "cent"))
 
 
+class DropCurrencyConjunction(AbstractTransform):
+    """Remove the spoken "and" between a major and a minor currency amount.
+
+    Runs after `CompoundSpokenNumbersToDigits`, so the amount is one token:
+    "5 dollars and 99 cents" → "5 dollars 99 cents", matching what
+    `NormalizeCurrency` produces for "$5.99". German "und" and French "et"
+    likewise.
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        data = get_language_data(language)
+        majors = {major for major, _ in data.currency_symbols.values()}
+        minors = {minor for _, minor in data.currency_symbols.values() if minor}
+
+        def words(units: set[str]) -> str:
+            forms = units | {data.currency_plurals.get(u, u) for u in units}
+            return "|".join(sorted(map(re.escape, forms), key=len, reverse=True))
+
+        self._re = re.compile(
+            rf"\b({words(majors)})\s+{re.escape(data.currency_conjunction)}"
+            rf"\s+(\w+\s+(?:{words(minors)}))\b",
+            re.IGNORECASE,
+        )
+
+    def process_string(self, s: str) -> str:
+        return self._re.sub(r"\1 \2", s)
+
+
 # ---------------------------------------------------------------------------
 # Percentage normalization
 # ---------------------------------------------------------------------------

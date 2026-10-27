@@ -14,6 +14,7 @@ from extended_wer_normalizer.languages.en_spelling_variants import (
 )
 from extended_wer_normalizer.transforms import (
     CollapseRepetitions,
+    DropCurrencyConjunction,
     ExpandAbbreviations,
     NormalizeCurrency,
     NormalizeDecimals,
@@ -412,7 +413,7 @@ def test_abbreviation_zero_wer():
         ("$5.99", "five dollars ninety nine cents"),
         ("$1", "one dollar"),
         ("€3", "three euros"),
-        ("£10.50", "ten pounds fifty pennies"),
+        ("£10.50", "ten pounds fifty pence"),
     ],
 )
 def test_currency_normalization(input_text, expected_fragment):
@@ -451,6 +452,36 @@ def test_currency_symbol_position_converges(language, written, spoken):
         f"\n  {written!r} → {normalize_for_wer(written, language)!r}"
         f"\n  {spoken!r} → {normalize_for_wer(spoken, language)!r}"
     )
+
+
+@pytest.mark.parametrize(
+    "language, written, spoken",
+    [
+        ("en", "$5.99", "five dollars and ninety nine cents"),
+        ("en", "$1.01", "one dollar and one cent"),
+        ("en", "£12.50", "twelve pounds and fifty pence"),
+        ("de", "5,99 €", "fünf Euro und neunundneunzig Cent"),
+        ("fr", "5,99 €", "cinq euros et quatre-vingt-dix-neuf centimes"),
+        ("fr", "1,01 €", "un euro et un centime"),
+    ],
+)
+def test_spoken_currency_conjunction_converges(language, written, spoken):
+    assert normalize_for_wer(written, language) == normalize_for_wer(spoken, language), (
+        f"\n  {written!r} → {normalize_for_wer(written, language)!r}"
+        f"\n  {spoken!r} → {normalize_for_wer(spoken, language)!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "language, text",
+    [
+        ("en", "dollars and cents"),
+        ("en", "5 dollars and 3 friends"),
+        ("de", "Euro und Cent"),
+    ],
+)
+def test_currency_conjunction_needs_an_amount(language, text):
+    assert DropCurrencyConjunction(language).process_string(text) == text
 
 
 # ===========================================================================

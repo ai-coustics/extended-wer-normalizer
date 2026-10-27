@@ -123,11 +123,12 @@ DE = LanguageData(
         "cent": "cent",
         "euro": "euro",
         "pfund": "pfund",
-        "penny": "pennys",
+        "penny": "pence",
         "yen": "yen",
         "rupie": "rupien",
         "paisa": "paisa",
     },
+    currency_conjunction="und",
     currency_symbol_trailing=True,
     word_for_percent="prozent",
     # German ordinal: 1-3 digits followed by "." and a word ("1. Januar" → "erste januar").

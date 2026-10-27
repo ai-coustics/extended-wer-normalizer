@@ -28,6 +28,10 @@ class LanguageData:
     decides which reading wins when a symbol sits between two numbers
     ("5 € 20 Stück").
 
+    `currency_conjunction` is the word speakers put between the major and
+    minor amount ("five dollars and ninety nine cents"); written amounts
+    never produce it, so `DropCurrencyConjunction` removes it.
+
     `thousands_separators` lists the characters that group digits in written
     numbers ("12,500" / "12.500" / "12 500"); `decimal_word` is the spoken
     decimal point ("point" / "komma" / "virgule"), the canonical form both
@@ -49,6 +53,7 @@ class LanguageData:
     currency_symbols: dict[str, tuple[str, str]]
     currency_plurals: dict[str, str]
     currency_symbol_trailing: bool
+    currency_conjunction: str
     word_for_percent: str
     ordinal_re: Pattern[str]
     thousands_separators: str

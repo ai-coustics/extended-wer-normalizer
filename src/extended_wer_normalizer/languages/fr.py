@@ -120,11 +120,12 @@ FR = LanguageData(
         "euro": "euros",
         "centime": "centimes",
         "livre": "livres",
-        "penny": "pennies",
+        "penny": "pence",
         "yen": "yens",
         "roupie": "roupies",
         "paisa": "paisas",
     },
+    currency_conjunction="et",
     currency_symbol_trailing=True,
     word_for_percent="pour cent",
     # French ordinal suffixes: 1er, 1ère, 2e, 2ème, 2es, 2èmes, 2nde, 2nds, 2nd.
