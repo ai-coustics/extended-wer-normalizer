@@ -6,6 +6,56 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Versions before 0.6.0 predate this changelog.
 
+## [0.8.0] - 2026-10-27
+
+**WER numbers are not comparable across this release**: decimals, grouped
+thousands and large English amounts all normalize differently.
+
+### Added
+
+- `RemoveThousandsSeparators`, `NormalizeDecimals` and
+  `DropCurrencyConjunction` transforms, plus the `thousands_separators` /
+  `decimal_word` fields on `LanguageData` (en `,` / `point`; de `.` /
+  `komma`; fr space, no-break space, `.` / `virgule`).
+
+### Changed
+
+- **Decimals keep their separator** (GitHub #11, ML-1887). `3.5` used to
+  normalize to `3 5`, identical to `35`, so an STT writing `35` for "three
+  point five" went unpenalized. Written and spoken decimals now converge on
+  `3 point 5` (`3 komma 5`, `3 virgule 5`), including percentages (`3.5%` →
+  `3 point 5 percent`). Separator chains (IPs, versions, dates) are
+  unchanged. UK-style times such as `3.30` now read as decimals and no longer
+  match "three thirty".
+
+### Fixed
+
+- Currency and percentages with thousands separators are read as one amount
+  (ML-1885): `$12,500` normalized to `1 2 dollars 5 0 cents0` and
+  `€1.000` (de) to `1 euro0`; both now match their spoken forms. A currency
+  amount with three or more fractional digits (`$5.999`) is read as a decimal
+  (`5 point 9 9 9 dollars`) instead of leaving a stray digit behind; every
+  written digit is kept, trailing zeros included (`$5.990`, `3.50%`).
+- English currency amounts, percentages and ordinals of 1,000 or more that
+  aren't round no longer split into two numbers: `$12500` normalized to
+  `1 2 0 0 0 5 0 0 dollars` instead of `1 2 5 0 0 dollars`, because
+  `num2words` writes "twelve thousand, five hundred" and the comma broke
+  re-digitization. Output changes for these inputs (ML-1886).
+- Currency amounts with the symbol after the amount, the German and French
+  convention, are now recognized (ML-1801): `20 €` normalized to `2 0 €`
+  instead of matching "zwanzig euro" (`2 0 euro`). A bare symbol with no
+  amount becomes the unit name (`in €` → `in euro`) instead of surviving
+  as a stray `€`. New `LanguageData.currency_symbol_trailing` field.
+- Spoken amounts joining the major and minor amounts with "and" ("five
+  dollars and ninety nine cents"; German "und", French "et") now match the
+  written form (`$5.99`) via the new `DropCurrencyConjunction` transform and
+  `LanguageData.currency_conjunction` field.
+- Amounts under one unit drop the zero major amount: `$0.50` →
+  "fifty cents" instead of "zero dollars fifty cents". `$0` still reads
+  "zero dollars".
+- `£` minor amounts verbalize as "pence" rather than "pennies" (`£10.50` →
+  "ten pounds fifty pence"), matching how British amounts are spoken.
+
 ## [0.7.0] - 2026-10-27
 
 ### Added

@@ -123,16 +123,20 @@ DE = LanguageData(
         "cent": "cent",
         "euro": "euro",
         "pfund": "pfund",
-        "penny": "pennys",
+        "penny": "pence",
         "yen": "yen",
         "rupie": "rupien",
         "paisa": "paisa",
     },
+    currency_conjunction="und",
+    currency_symbol_trailing=True,
     word_for_percent="prozent",
     # German ordinal: 1-3 digits followed by "." and a word ("1. Januar" → "erste januar").
     # The 1-3 digit cap keeps years like "1990. " out. The lookbehind blocks decimals,
     # the lookahead blocks sentence-ending periods (no following word).
     ordinal_re=re.compile(r"(?<!\w)(\d{1,3})\.(?=\s+\w)"),
+    thousands_separators=".",
+    decimal_word="komma",
 )
 
 register(DE)

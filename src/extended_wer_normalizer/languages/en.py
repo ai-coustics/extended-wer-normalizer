@@ -112,13 +112,17 @@ EN = LanguageData(
         "cent": "cents",
         "euro": "euros",
         "pound": "pounds",
-        "penny": "pennies",
+        "penny": "pence",
         "yen": "yen",
         "rupee": "rupees",
         "paisa": "paise",
     },
+    currency_conjunction="and",
+    currency_symbol_trailing=False,
     word_for_percent="percent",
     ordinal_re=re.compile(r"\b(\d+)(st|nd|rd|th)\b", re.IGNORECASE),
+    thousands_separators=",",
+    decimal_word="point",
     spelling_variants=EN_SPELLING_VARIANTS,
 )
 

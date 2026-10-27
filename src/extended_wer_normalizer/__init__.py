@@ -9,10 +9,12 @@ from .transforms import (
     CollapseRepetitions,
     CompoundSpokenNumbersToDigits,
     DigitWordsToChars,
+    DropCurrencyConjunction,
     ExpandAbbreviations,
     ExpandDigitRuns,
     ExpandFrenchElisions,
     NormalizeCurrency,
+    NormalizeDecimals,
     NormalizeEmails,
     NormalizeOrdinals,
     NormalizePercentages,
@@ -20,6 +22,7 @@ from .transforms import (
     NormalizeSymbols,
     NormalizeURLs,
     RemoveFillerWords,
+    RemoveThousandsSeparators,
     SplitHyphenatedWords,
 )
 
@@ -33,10 +36,12 @@ __all__ = [
     "CollapseRepetitions",
     "CompoundSpokenNumbersToDigits",
     "DigitWordsToChars",
+    "DropCurrencyConjunction",
     "ExpandAbbreviations",
     "ExpandDigitRuns",
     "ExpandFrenchElisions",
     "NormalizeCurrency",
+    "NormalizeDecimals",
     "NormalizeEmails",
     "NormalizeOrdinals",
     "NormalizePercentages",
@@ -44,6 +49,7 @@ __all__ = [
     "NormalizeSymbols",
     "NormalizeURLs",
     "RemoveFillerWords",
+    "RemoveThousandsSeparators",
     "SplitHyphenatedWords",
 ]
 
@@ -75,6 +81,9 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
         # Pattern-specific normalizations run first, before punctuation is stripped.
         NormalizeEmails(language),
         NormalizeURLs(language),
+        # After emails/URLs (which verbalize their own dots), before currency
+        # and percent, which would read "12,500" as 12 point 5.
+        RemoveThousandsSeparators(language),
         NormalizeSymbols(language),
         ExpandAbbreviations(language),
         NormalizeCurrency(language),
@@ -99,6 +108,11 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
             # (e.g. "twenty one" → "21") is then split into "2 1" by
             # ExpandDigitRuns, matching the canonical form for "21".
             CompoundSpokenNumbersToDigits(language),
+            # "3.5" (written, or from spoken "three point five") → "3 point 5"
+            # before RemovePunctuation can collapse it into "35".
+            NormalizeDecimals(language),
+            # "5 dollars and 99 cents" → "5 dollars 99 cents", as "$5.99" reads.
+            DropCurrencyConjunction(language),
             jiwer.ToLowerCase(),
             # Split "fixed-term" → "fixed term" before RemovePunctuation, which
             # would otherwise delete the hyphen and join the parts. After

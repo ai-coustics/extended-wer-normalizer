@@ -287,15 +287,99 @@ class NormalizeSymbols(AbstractTransform):
 
 
 # ---------------------------------------------------------------------------
+# Number formats
+# ---------------------------------------------------------------------------
+
+
+class RemoveThousandsSeparators(AbstractTransform):
+    """Drop the language's digit-grouping separator from written numbers.
+
+    Runs before currency/percent verbalization so "$12,500" is read as one
+    amount rather than 12 dollars 50 cents. Only strict groups of exactly
+    three digits are joined, so separator chains that aren't grouped numbers
+    (IPs, versions, dates) pass through untouched.
+
+    en: "12,500" → "12500"    de: "12.500" → "12500"    fr: "12 500" → "12500"
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        sep = "[" + re.escape(get_language_data(language).thousands_separators) + "]"
+        self._re = re.compile(rf"(?<![\d.,])\d{{1,3}}(?:{sep}\d{{3}})+(?!\d|{sep}\d)")
+        self._sep = re.compile(sep)
+
+    def process_string(self, s: str) -> str:
+        return self._re.sub(lambda m: self._sep.sub("", m.group()), s)
+
+
+# A single separator between digits; chains like "1.2.3", "192.168.0.1",
+# "1.1.2024" or "1,2,3" are left alone.
+_DECIMAL_RE = re.compile(r"(?<![\d.,])(\d+)[.,](\d+)(?![.,]?\d)")
+# A bare leading separator: ".5" (spoken "point five").
+_LEADING_DECIMAL_RE = re.compile(r"(?<![\w.,])[.,](\d)")
+
+
+class NormalizeDecimals(AbstractTransform):
+    """Spell out the decimal separator so "3.5" and "35" stay distinct.
+
+    Runs after `CompoundSpokenNumbersToDigits`, which turns "three point five"
+    into "3.5", and before punctuation removal, which would otherwise delete
+    the separator. Either "." or "," is accepted in every language, as in
+    currency and percent parsing; thousands separators are already gone.
+
+    en: "3.5" → "3 point 5"    de: "3,5" → "3 komma 5"    fr: "3,5" → "3 virgule 5"
+    en: ".5"  → "point 5"
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        self._word = get_language_data(language).decimal_word
+
+    def process_string(self, s: str) -> str:
+        s = _DECIMAL_RE.sub(rf"\1 {self._word} \2", s)
+        return _LEADING_DECIMAL_RE.sub(rf"{self._word} \1", s)
+
+
+# ---------------------------------------------------------------------------
+# Number verbalization
+# ---------------------------------------------------------------------------
+
+
+def _num2words(n: int, language: str, **kwargs: str) -> str:
+    """``num2words`` with hyphens split and group commas dropped.
+
+    English output separates groups with commas ("twelve thousand, five
+    hundred"), which ``CompoundSpokenNumbersToDigits`` would read as two
+    numbers ("12000, 500") while the spoken form yields one ("12500").
+    """
+    from num2words import num2words
+
+    return num2words(n, lang=language, **kwargs).replace("-", " ").replace(",", "")
+
+
+def _decimal_words(whole: int, fraction: str, language: str) -> str:
+    """Spell a decimal digit by digit after the point: "5", "990" → "five point
+    nine nine zero".
+
+    Going through a float (as ``num2words`` does) would drop trailing zeros
+    ("5.990" → "five point nine nine"), while the spoken form keeps them.
+    """
+    digits = " ".join(_num2words(int(d), language) for d in fraction)
+    point = get_language_data(language).decimal_word
+    return f"{_num2words(whole, language)} {point} {digits}"
+
+
+# ---------------------------------------------------------------------------
 # Currency normalization
 # ---------------------------------------------------------------------------
 
-# Accept either "." or "," as decimal separator so French "5,99 €" and
-# English "$5.99" both parse. The integer-part regex captures one currency symbol
-# and the digits to either side of an optional fractional separator.
-_CURRENCY_RE = re.compile(
-    r"([$€£¥₹])\s*(\d+)(?:[.,](\d{1,2}))?",
-)
+# Accept either "." or "," as decimal separator so German "5,99 €" and
+# English "$5.99" both parse. The symbol comes either before the amount
+# ("$5.99", "€20") or after it ("20 €", the German and French convention);
+# thousands separators are already removed by `RemoveThousandsSeparators`.
+_CURRENCY_SYMBOLS = "[$€£¥₹]"
+_AMOUNT = r"(?P<major>\d+)(?:[.,](?P<minor>\d+))?"
+_PREFIX_CURRENCY_RE = re.compile(rf"(?P<symbol>{_CURRENCY_SYMBOLS})\s*{_AMOUNT}")
+_SUFFIX_CURRENCY_RE = re.compile(rf"(?<![\d.,]){_AMOUNT}\s*(?P<symbol>{_CURRENCY_SYMBOLS})")
+_BARE_CURRENCY_RE = re.compile(_CURRENCY_SYMBOLS)
 
 
 def _pluralize(unit: str, count: int, plurals: dict[str, str]) -> str:
@@ -311,6 +395,13 @@ class NormalizeCurrency(AbstractTransform):
       "$5"    → "five dollars"
       "$5.99" → "five dollars ninety nine cents"
       "€3.50" → "three euros fifty cents"
+      "$5.999" → "five point nine nine nine dollars"
+
+    German: "5,99 €" → "fünf euro neunundneunzig cent"
+
+    A symbol without an amount becomes its plural unit name ("in €" →
+    "in euro"), so it matches the spoken word instead of surviving
+    punctuation removal as a stray "€".
     """
 
     def __init__(self, language: str = "en") -> None:
@@ -318,27 +409,81 @@ class NormalizeCurrency(AbstractTransform):
         self._language = language
         self._symbols = data.currency_symbols
         self._plurals = data.currency_plurals
+        # The language's own convention goes first ("5 € 20" is 5 euros in German).
+        self._patterns = (_PREFIX_CURRENCY_RE, _SUFFIX_CURRENCY_RE)
+        if data.currency_symbol_trailing:
+            self._patterns = self._patterns[::-1]
 
     def process_string(self, s: str) -> str:
-        from num2words import num2words
-
         def n2w(n: int) -> str:
-            return num2words(n, lang=self._language).replace("-", " ")
+            return _num2words(n, self._language)
 
         def _sub(match: re.Match[str]) -> str:
-            symbol = match.group(1)
-            major = int(match.group(2))
-            minor_str = match.group(3)
-            unit_major, unit_minor = self._symbols.get(symbol, ("dollar", "cent"))
+            symbol = match["symbol"]
+            major = int(match["major"])
+            minor_str = match["minor"]
+            unit_major, unit_minor = self._unit(symbol)
 
-            parts = [f"{n2w(major)} {_pluralize(unit_major, major, self._plurals)}"]
-            if minor_str:
-                minor = int(minor_str.ljust(2, "0"))
-                if minor > 0 and unit_minor:
-                    parts.append(f"{n2w(minor)} {_pluralize(unit_minor, minor, self._plurals)}")
+            if minor_str and len(minor_str) > 2:
+                # Not a cents amount ("$5.999"): read it as a decimal number,
+                # "five point nine nine nine dollars".
+                amount = _decimal_words(major, minor_str, self._language)
+                return f"{amount} {_pluralize(unit_major, 2, self._plurals)}"
+
+            minor = int(minor_str.ljust(2, "0")) if minor_str else 0
+            parts = []
+            # "$0.50" is spoken "fifty cents", not "zero dollars fifty cents".
+            if major > 0 or not (minor and unit_minor):
+                parts.append(f"{n2w(major)} {_pluralize(unit_major, major, self._plurals)}")
+            if minor > 0 and unit_minor:
+                parts.append(f"{n2w(minor)} {_pluralize(unit_minor, minor, self._plurals)}")
             return " ".join(parts)
 
-        return _CURRENCY_RE.sub(_sub, s)
+        def _bare(match: re.Match[str]) -> str:
+            unit_major = self._unit(match.group())[0]
+            return f" {_pluralize(unit_major, 2, self._plurals)} "
+
+        for pattern in self._patterns:
+            s = pattern.sub(_sub, s)
+        return _BARE_CURRENCY_RE.sub(_bare, s)
+
+    def _unit(self, symbol: str) -> tuple[str, str]:
+        return self._symbols.get(symbol, ("dollar", "cent"))
+
+
+class DropCurrencyConjunction(AbstractTransform):
+    """Remove the spoken "and" between a major and a minor currency amount.
+
+    Runs after `CompoundSpokenNumbersToDigits`, so the amount is one token:
+    "5 dollars and 99 cents" → "5 dollars 99 cents", matching what
+    `NormalizeCurrency` produces for "$5.99". German "und" and French "et"
+    likewise.
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        data = get_language_data(language)
+        majors = {major for major, _ in data.currency_symbols.values()}
+        minors = {minor for _, minor in data.currency_symbols.values() if minor}
+
+        def units(names: set[str]) -> set[str]:
+            return names | {data.currency_plurals.get(n, n) for n in names}
+
+        def alternation(forms: set[str]) -> str:
+            # Longest first, so "dollars" wins over "dollar".
+            ordered = sorted(forms, key=lambda form: -len(form))
+            return "|".join(map(re.escape, ordered))
+
+        # The amount is one token: digits from `CompoundSpokenNumbersToDigits`,
+        # or a single digit word it leaves alone ("one cent").
+        amount = rf"\d+|{alternation(set(data.digit_words))}"
+        self._re = re.compile(
+            rf"\b({alternation(units(majors))})\s+{re.escape(data.currency_conjunction)}"
+            rf"\s+((?:{amount})\s+(?:{alternation(units(minors))}))\b",
+            re.IGNORECASE,
+        )
+
+    def process_string(self, s: str) -> str:
+        return self._re.sub(r"\1 \2", s)
 
 
 # ---------------------------------------------------------------------------
@@ -361,16 +506,13 @@ class NormalizePercentages(AbstractTransform):
         self._word = get_language_data(language).word_for_percent
 
     def process_string(self, s: str) -> str:
-        from num2words import num2words
-
         def _replace(m: re.Match[str]) -> str:
-            raw = m.group(1).replace(",", ".")
-            val = float(raw)
-            if val == int(val):
-                spoken = num2words(int(val), lang=self._language)
+            whole, _, fraction = m.group(1).replace(",", ".").partition(".")
+            if fraction:
+                spoken = _decimal_words(int(whole), fraction, self._language)
             else:
-                spoken = num2words(val, lang=self._language)
-            return f"{spoken.replace('-', ' ')} {self._word}"
+                spoken = _num2words(int(whole), self._language)
+            return f"{spoken} {self._word}"
 
         return _PERCENT_RE.sub(_replace, s)
 
@@ -393,11 +535,8 @@ class NormalizeOrdinals(AbstractTransform):
         self._re = get_language_data(language).ordinal_re
 
     def process_string(self, s: str) -> str:
-        from num2words import num2words
-
         def _replace(m: re.Match[str]) -> str:
-            spoken = num2words(int(m.group(1)), to="ordinal", lang=self._language)
-            return spoken.replace("-", " ")
+            return _num2words(int(m.group(1)), self._language, to="ordinal")
 
         return self._re.sub(_replace, s)
 
