@@ -16,6 +16,7 @@ from extended_wer_normalizer.transforms import (
     CollapseRepetitions,
     ExpandAbbreviations,
     NormalizeCurrency,
+    NormalizeDecimals,
     NormalizeEmails,
     NormalizeOrdinals,
     NormalizePercentages,
@@ -23,6 +24,7 @@ from extended_wer_normalizer.transforms import (
     NormalizeSymbols,
     NormalizeURLs,
     RemoveFillerWords,
+    RemoveThousandsSeparators,
     SplitHyphenatedWords,
 )
 
@@ -469,6 +471,113 @@ def test_large_amounts_converge_with_spoken_form(written, spoken):
         f"\n  {written!r} → {normalize_for_wer(written)!r}"
         f"\n  {spoken!r} → {normalize_for_wer(spoken)!r}"
     )
+
+
+# ===========================================================================
+# NUMBER FORMATS — thousands separators and decimals
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "language, written, spoken",
+    [
+        # Thousands separators in currency and percent amounts.
+        ("en", "$12,500", "twelve thousand five hundred dollars"),
+        ("en", "$1,234.56", "one thousand two hundred thirty four dollars fifty six cents"),
+        ("en", "£2,000,000", "two million pounds"),
+        ("en", "1,500%", "one thousand five hundred percent"),
+        ("de", "€1.000", "tausend euro"),
+        ("de", "€12.500,50", "zwölftausendfünfhundert euro fünfzig cent"),
+        ("de", "1.500 %", "eintausendfünfhundert prozent"),
+        ("fr", "€12 500", "douze mille cinq cents euros"),
+        ("fr", "€12 500", "douze mille cinq cents euros"),
+        # Currency with more than two fractional digits isn't cents.
+        ("en", "$5.999", "five point nine nine nine dollars"),
+        # Decimals.
+        ("en", "3.5", "three point five"),
+        ("en", "3.5%", "three point five percent"),
+        ("en", "0.5", "zero point five"),
+        ("en", ".5", "point five"),
+        ("en", "version 2.1", "version two point one"),
+        ("de", "3,5", "drei komma fünf"),
+        ("de", "3,5 %", "drei komma fünf prozent"),
+        ("fr", "3,5", "trois virgule cinq"),
+        ("fr", "3,5 %", "trois virgule cinq pour cent"),
+    ],
+)
+def test_number_formats_converge_with_spoken_form(language, written, spoken):
+    assert normalize_for_wer(written, language) == normalize_for_wer(spoken, language), (
+        f"\n  {written!r} → {normalize_for_wer(written, language)!r}"
+        f"\n  {spoken!r} → {normalize_for_wer(spoken, language)!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "language, a, b",
+    [
+        ("en", "35", "3.5"),
+        ("en", "35%", "3.5%"),
+        ("en", "thirty five", "three point five"),
+        ("de", "35 %", "3,5 %"),
+        ("fr", "35 %", "3,5 %"),
+    ],
+)
+def test_decimal_separator_is_not_dropped(language, a, b):
+    assert normalize_for_wer(a, language) != normalize_for_wer(b, language)
+
+
+@pytest.mark.parametrize(
+    "language, text, expected",
+    [
+        ("en", "192.168.0.1", "1 9 2 1 6 8 0 1"),
+        ("en", "1.2.3", "1 2 3"),
+        ("en", "1,2,3", "1 2 3"),
+        ("de", "1.1.2024", "1 1 2 0 2 4"),
+    ],
+)
+def test_separator_chains_are_not_numbers(language, text, expected):
+    assert normalize_for_wer(text, language) == expected
+
+
+@pytest.mark.parametrize(
+    "language, text, expected",
+    [
+        ("en", "12,500 and 1,234,567", "12500 and 1234567"),
+        ("en", "12,50", "12,50"),
+        ("en", "1,2345", "1,2345"),
+        ("de", "12.500", "12500"),
+        ("fr", "12 500 et 12 500", "12500 et 12500"),
+    ],
+)
+def test_remove_thousands_separators(language, text, expected):
+    assert RemoveThousandsSeparators(language).process_string(text) == expected
+
+
+@pytest.mark.parametrize(
+    "language, text, expected",
+    [
+        ("en", "3.5 and 3,5", "3 point 5 and 3 point 5"),
+        ("en", "at .5", "at point 5"),
+        ("en", "1.2.3", "1.2.3"),
+        ("de", "3,5", "3 komma 5"),
+        ("fr", "3,5", "3 virgule 5"),
+    ],
+)
+def test_normalize_decimals(language, text, expected):
+    assert NormalizeDecimals(language).process_string(text) == expected
+
+
+@pytest.mark.parametrize(
+    "language, text",
+    [
+        ("en", "it was $12,500.50, about 3.5% or .5 of 1,000"),
+        ("de", "es kostet €12.500,50, etwa 3,5 %"),
+        ("fr", "ça coûte €12 500,50, environ 3,5 %"),
+    ],
+)
+def test_number_formats_idempotent(language, text):
+    once = normalize_for_wer(text, language)
+    assert normalize_for_wer(once, language) == once
 
 
 # ===========================================================================

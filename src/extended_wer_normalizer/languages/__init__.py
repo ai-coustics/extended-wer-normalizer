@@ -23,6 +23,11 @@ class LanguageData:
     `code` directly: the transform delegates to `text2num.alpha2digit`, which
     embeds the per-language number grammar.
 
+    `thousands_separators` lists the characters that group digits in written
+    numbers ("12,500" / "12.500" / "12 500"); `decimal_word` is the spoken
+    decimal point ("point" / "komma" / "virgule"), the canonical form both
+    "3.5" and "three point five" normalize to.
+
     `spelling_variants` maps dialect spellings to one canonical form
     (English: British → American). Languages without such a map leave it
     empty, making `NormalizeSpellingVariants` a no-op for them.
@@ -40,6 +45,8 @@ class LanguageData:
     currency_plurals: dict[str, str]
     word_for_percent: str
     ordinal_re: Pattern[str]
+    thousands_separators: str
+    decimal_word: str
     spelling_variants: dict[str, str] = field(default_factory=dict)
 
 

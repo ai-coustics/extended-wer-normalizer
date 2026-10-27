@@ -84,9 +84,11 @@ wer = jiwer.wer(reference, hypothesis, reference_transform=transform, hypothesis
 | `DigitWordsToChars` | `"zero one seven"` → `"0 1 7"` |
 | `NormalizeEmails` | `"user@example.com"` → `"user at example dot com"` |
 | `NormalizeURLs` | `"https://example.com/path"` → `"example dot com"` |
+| `RemoveThousandsSeparators` | `"$12,500"` → `"$12500"`, `"12.500"` → `"12500"` (with `language="de"`) |
 | `NormalizeCurrency` | `"$5.99"` → `"five dollars ninety nine cents"` |
 | `NormalizePercentages` | `"50%"` → `"fifty percent"` |
 | `NormalizeOrdinals` | `"1st"` → `"first"`, `"15th"` → `"fifteenth"` |
+| `NormalizeDecimals` | `"3.5"` → `"3 point 5"`, `"3,5"` → `"3 komma 5"` (with `language="de"`) |
 | `ExpandAbbreviations` | `"Dr."` → `"doctor"`, `"vs."` → `"versus"` |
 | `NormalizeSymbols` | `"cats & dogs"` → `"cats and dogs"` |
 | `SplitHyphenatedWords` | `"fixed-term"` → `"fixed term"` |
@@ -101,8 +103,8 @@ Every transform that consumes language-specific data accepts a `language="en"` k
 
 The English pipeline applies transforms left-to-right in a single pass:
 
-1. **Pattern-specific** (before punctuation is stripped): email, URL, symbol, abbreviation, currency, percentage, ordinal
-2. **Core**: contractions (`I'm` → `i am`), compound number words to digits (`twenty one` → `21`), lowercase, intra-word hyphen split (`fixed-term` → `fixed term`), punctuation removal
+1. **Pattern-specific** (before punctuation is stripped): email, URL, thousands separators (`12,500` → `12500`), symbol, abbreviation, currency, percentage, ordinal
+2. **Core**: contractions (`I'm` → `i am`), compound number words to digits (`twenty one` → `21`), decimals (`3.5` → `3 point 5`), lowercase, intra-word hyphen split (`fixed-term` → `fixed term`), punctuation removal
 3. **Spelling variants** (English only): British → American (`travelling` → `traveling`)
 4. **Digit normalization**: expand digit runs (`0176` → `0 1 7 6`, `21` → `2 1`), convert digit words (`zero` → `0`)
 5. **Cleanup**: filler words, repetition collapse
@@ -155,7 +157,7 @@ get_language_data("de").abbreviations["hr."]  # "herr"
 - **Currency and percentages canonicalize to digits, not words.** `NormalizeCurrency`/`NormalizePercentages` first verbalize amounts (`$5.99` → `five dollars ninety nine cents`, `50%` → `fifty percent` — the per-transform outputs shown in the table above), but the digit-normalization stage (`CompoundSpokenNumbersToDigits`, then `ExpandDigitRuns`) runs later in the pipeline and converts those number words back to split digits: the pipeline's final form is `5 dollars 9 9 cents` / `5 0 percent`. Written and spoken forms still converge to the same string, which is what WER fairness needs — except for amounts with a trailing currency symbol (`5,99 €`), which are not yet recognized (ML-1801).
 - **Hyphenated compounds**: intra-word hyphens split into spaces (`fixed-term` → `fixed term`), so hyphenated and spaced spellings of the same words score identically. Before 0.6.0 the hyphen was deleted (`fixedterm`), which penalized STTs that never emit hyphens — WER numbers are not comparable across that boundary.
 - **US/UK spelling variants**: English canonicalizes British spellings to American (`travelling` → `traveling`, `colour` → `color`, `centre` → `center`), so dialect-only differences score zero. The 1,731-entry table is based on OpenAI Whisper's `english.json` (MIT) — the same table Gladia's normalizer ships — with a handful of documented corrections to entries that changed the word rather than only its spelling (upstream maps `tonne` → `ton`, `philtre` → `filter`) or that mapped American → British (see `languages/en_spelling_variants.py`). As with the hyphen change, WER numbers are not comparable across the boundary (introduced in 0.7.0).
-- **Comma vs. period decimals**: French uses `,` (`€5,99`, `3,5%`); the currency and percentage transforms accept either separator regardless of language.
+- **Thousands separators and decimals are language-specific.** Digit grouping is removed first: `,` in English, `.` in German, a space (or no-break space) in French, and only for strict groups of three digits, so IPs, versions and dates are left alone. A remaining single separator between digits is a decimal and is spelled out with the language's word (`point`, `komma`, `virgule`), so `3.5` and `three point five` both normalize to `3 point 5`, distinct from `35`. Either `.` or `,` is accepted as the decimal separator in every language, as in currency and percentages. Consequences: `1.500` reads as fifteen hundred in German but one point five in English, and UK-style times (`3.30`) read as decimals rather than matching `three thirty`. WER numbers are not comparable across this change (introduced in 0.8.0).
 - **German ordinals**: matched as 1- to 3-digit numbers followed by `. ` and a word (e.g. `"1. Januar"` but not `"Es war 1990."` or `"1.5 Liter"`). 4+ digits and decimals are skipped to avoid false positives on years.
 - **French ordinals**: matched as `1er`, `1ère`, `2e`, `2es`, `2ème`, `2èmes`, `2nde`, `2nds`, `2nd`. `num2words` returns masculine forms (`premier`, `deuxième`); feminine variants like `première` or `seconde` are not produced.
 - **Contractions**: `jiwer.ExpandCommonEnglishContractions` runs only for English. French has a custom `ExpandFrenchElisions` that splits `j'`, `l'`, `d'`, `n'`, `s'`, `m'`, `t'`, `c'`, `qu'`, `jusqu'`, `lorsqu'`, `puisqu'`, `quoiqu'` from the following word. German has no contraction step.

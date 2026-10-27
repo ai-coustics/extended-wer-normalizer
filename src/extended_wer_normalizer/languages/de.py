@@ -133,6 +133,8 @@ DE = LanguageData(
     # The 1-3 digit cap keeps years like "1990. " out. The lookbehind blocks decimals,
     # the lookahead blocks sentence-ending periods (no following word).
     ordinal_re=re.compile(r"(?<!\w)(\d{1,3})\.(?=\s+\w)"),
+    thousands_separators=".",
+    decimal_word="komma",
 )
 
 register(DE)

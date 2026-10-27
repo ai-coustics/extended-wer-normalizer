@@ -8,8 +8,32 @@ Versions before 0.6.0 predate this changelog.
 
 ## [Unreleased]
 
+**WER numbers are not comparable across this release**: decimals, grouped
+thousands and large English amounts all normalize differently.
+
+### Added
+
+- `RemoveThousandsSeparators` and `NormalizeDecimals` transforms, plus the
+  `thousands_separators` / `decimal_word` fields on `LanguageData`
+  (en `,` / `point`; de `.` / `komma`; fr space, no-break space / `virgule`).
+
+### Changed
+
+- **Decimals keep their separator** (GitHub #11, ML-1887). `3.5` used to
+  normalize to `3 5`, identical to `35`, so an STT writing `35` for "three
+  point five" went unpenalized. Written and spoken decimals now converge on
+  `3 point 5` (`3 komma 5`, `3 virgule 5`), including percentages (`3.5%` →
+  `3 point 5 percent`). Separator chains (IPs, versions, dates) are
+  unchanged. UK-style times such as `3.30` now read as decimals and no longer
+  match "three thirty".
+
 ### Fixed
 
+- Currency and percentages with thousands separators are read as one amount
+  (ML-1885): `$12,500` normalized to `1 2 dollars 5 0 cents0` and
+  `€1.000` (de) to `1 euro0`; both now match their spoken forms. A currency
+  amount with three or more fractional digits (`$5.999`) is read as a decimal
+  (`5 point 9 9 9 dollars`) instead of leaving a stray digit behind.
 - English currency amounts, percentages and ordinals of 1,000 or more that
   aren't round no longer split into two numbers: `$12500` normalized to
   `1 2 0 0 0 5 0 0 dollars` instead of `1 2 5 0 0 dollars`, because

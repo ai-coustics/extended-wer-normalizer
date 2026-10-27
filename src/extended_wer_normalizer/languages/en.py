@@ -119,6 +119,8 @@ EN = LanguageData(
     },
     word_for_percent="percent",
     ordinal_re=re.compile(r"\b(\d+)(st|nd|rd|th)\b", re.IGNORECASE),
+    thousands_separators=",",
+    decimal_word="point",
     spelling_variants=EN_SPELLING_VARIANTS,
 )
 

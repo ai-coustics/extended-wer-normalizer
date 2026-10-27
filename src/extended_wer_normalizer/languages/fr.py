@@ -133,6 +133,9 @@ FR = LanguageData(
         r"\b(\d+)(?:èmes|ème|ères|ère|ers|er|nde|nds|nd|es|e)\b",
         re.IGNORECASE,
     ),
+    # Space, no-break space and narrow no-break space all group digits.
+    thousands_separators=" \u00a0\u202f",
+    decimal_word="virgule",
 )
 
 register(FR)

@@ -8,6 +8,7 @@ The English defaults preserve the package's pre-0.3 behavior bit-for-bit.
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 
 from jiwer import AbstractTransform
 
@@ -287,11 +288,63 @@ class NormalizeSymbols(AbstractTransform):
 
 
 # ---------------------------------------------------------------------------
+# Number formats
+# ---------------------------------------------------------------------------
+
+
+class RemoveThousandsSeparators(AbstractTransform):
+    """Drop the language's digit-grouping separator from written numbers.
+
+    Runs before currency/percent verbalization so "$12,500" is read as one
+    amount rather than 12 dollars 50 cents. Only strict groups of exactly
+    three digits are joined, so separator chains that aren't grouped numbers
+    (IPs, versions, dates) pass through untouched.
+
+    en: "12,500" → "12500"    de: "12.500" → "12500"    fr: "12 500" → "12500"
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        sep = "[" + re.escape(get_language_data(language).thousands_separators) + "]"
+        self._re = re.compile(rf"(?<![\d.,])\d{{1,3}}(?:{sep}\d{{3}})+(?!\d|{sep}\d)")
+        self._sep = re.compile(sep)
+
+    def process_string(self, s: str) -> str:
+        return self._re.sub(lambda m: self._sep.sub("", m.group()), s)
+
+
+# A single separator between digits; chains like "1.2.3", "192.168.0.1",
+# "1.1.2024" or "1,2,3" are left alone.
+_DECIMAL_RE = re.compile(r"(?<![\d.,])(\d+)[.,](\d+)(?![.,]?\d)")
+# A bare leading separator: ".5" (spoken "point five").
+_LEADING_DECIMAL_RE = re.compile(r"(?<![\w.,])[.,](\d)")
+
+
+class NormalizeDecimals(AbstractTransform):
+    """Spell out the decimal separator so "3.5" and "35" stay distinct.
+
+    Runs after `CompoundSpokenNumbersToDigits`, which turns "three point five"
+    into "3.5", and before punctuation removal, which would otherwise delete
+    the separator. Either "." or "," is accepted in every language, as in
+    currency and percent parsing; thousands separators are already gone.
+
+    en: "3.5" → "3 point 5"    de: "3,5" → "3 komma 5"    fr: "3,5" → "3 virgule 5"
+    en: ".5"  → "point 5"
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        self._word = get_language_data(language).decimal_word
+
+    def process_string(self, s: str) -> str:
+        s = _DECIMAL_RE.sub(rf"\1 {self._word} \2", s)
+        return _LEADING_DECIMAL_RE.sub(rf"{self._word} \1", s)
+
+
+# ---------------------------------------------------------------------------
 # Number verbalization
 # ---------------------------------------------------------------------------
 
 
-def _num2words(n: int | float, language: str, **kwargs: str) -> str:
+def _num2words(n: int | float | Decimal, language: str, **kwargs: str) -> str:
     """``num2words`` with hyphens split and group commas dropped.
 
     English output separates groups with commas ("twelve thousand, five
@@ -309,9 +362,10 @@ def _num2words(n: int | float, language: str, **kwargs: str) -> str:
 
 # Accept either "." or "," as decimal separator so French "5,99 €" and
 # English "$5.99" both parse. The integer-part regex captures one currency symbol
-# and the digits to either side of an optional fractional separator.
+# and the digits to either side of an optional fractional separator; thousands
+# separators are already removed by `RemoveThousandsSeparators`.
 _CURRENCY_RE = re.compile(
-    r"([$€£¥₹])\s*(\d+)(?:[.,](\d{1,2}))?",
+    r"([$€£¥₹])\s*(\d+)(?:[.,](\d+))?",
 )
 
 
@@ -328,6 +382,7 @@ class NormalizeCurrency(AbstractTransform):
       "$5"    → "five dollars"
       "$5.99" → "five dollars ninety nine cents"
       "€3.50" → "three euros fifty cents"
+      "$5.999" → "five point nine nine nine dollars"
     """
 
     def __init__(self, language: str = "en") -> None:
@@ -345,6 +400,12 @@ class NormalizeCurrency(AbstractTransform):
             major = int(match.group(2))
             minor_str = match.group(3)
             unit_major, unit_minor = self._symbols.get(symbol, ("dollar", "cent"))
+
+            if minor_str and len(minor_str) > 2:
+                # Not a cents amount ("$5.999"): read it as a decimal number,
+                # "five point nine nine nine dollars".
+                amount = _num2words(Decimal(f"{major}.{minor_str}"), self._language)
+                return f"{amount} {_pluralize(unit_major, 2, self._plurals)}"
 
             parts = [f"{n2w(major)} {_pluralize(unit_major, major, self._plurals)}"]
             if minor_str:
