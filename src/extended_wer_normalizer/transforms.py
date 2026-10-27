@@ -360,13 +360,15 @@ def _num2words(n: int | float | Decimal, language: str, **kwargs: str) -> str:
 # Currency normalization
 # ---------------------------------------------------------------------------
 
-# Accept either "." or "," as decimal separator so French "5,99 €" and
-# English "$5.99" both parse. The integer-part regex captures one currency symbol
-# and the digits to either side of an optional fractional separator; thousands
-# separators are already removed by `RemoveThousandsSeparators`.
-_CURRENCY_RE = re.compile(
-    r"([$€£¥₹])\s*(\d+)(?:[.,](\d+))?",
-)
+# Accept either "." or "," as decimal separator so German "5,99 €" and
+# English "$5.99" both parse. The symbol comes either before the amount
+# ("$5.99", "€20") or after it ("20 €", the German and French convention);
+# thousands separators are already removed by `RemoveThousandsSeparators`.
+_CURRENCY_SYMBOLS = "[$€£¥₹]"
+_AMOUNT = r"(?P<major>\d+)(?:[.,](?P<minor>\d+))?"
+_PREFIX_CURRENCY_RE = re.compile(rf"(?P<symbol>{_CURRENCY_SYMBOLS})\s*{_AMOUNT}")
+_SUFFIX_CURRENCY_RE = re.compile(rf"(?<![\d.,]){_AMOUNT}\s*(?P<symbol>{_CURRENCY_SYMBOLS})")
+_BARE_CURRENCY_RE = re.compile(_CURRENCY_SYMBOLS)
 
 
 def _pluralize(unit: str, count: int, plurals: dict[str, str]) -> str:
@@ -383,6 +385,12 @@ class NormalizeCurrency(AbstractTransform):
       "$5.99" → "five dollars ninety nine cents"
       "€3.50" → "three euros fifty cents"
       "$5.999" → "five point nine nine nine dollars"
+
+    German: "5,99 €" → "fünf euro neunundneunzig cent"
+
+    A symbol without an amount becomes its plural unit name ("in €" →
+    "in euro"), so it matches the spoken word instead of surviving
+    punctuation removal as a stray "€".
     """
 
     def __init__(self, language: str = "en") -> None:
@@ -390,16 +398,20 @@ class NormalizeCurrency(AbstractTransform):
         self._language = language
         self._symbols = data.currency_symbols
         self._plurals = data.currency_plurals
+        # The language's own convention goes first ("5 € 20" is 5 euros in German).
+        self._patterns = (_PREFIX_CURRENCY_RE, _SUFFIX_CURRENCY_RE)
+        if data.currency_symbol_trailing:
+            self._patterns = self._patterns[::-1]
 
     def process_string(self, s: str) -> str:
         def n2w(n: int) -> str:
             return _num2words(n, self._language)
 
         def _sub(match: re.Match[str]) -> str:
-            symbol = match.group(1)
-            major = int(match.group(2))
-            minor_str = match.group(3)
-            unit_major, unit_minor = self._symbols.get(symbol, ("dollar", "cent"))
+            symbol = match["symbol"]
+            major = int(match["major"])
+            minor_str = match["minor"]
+            unit_major, unit_minor = self._unit(symbol)
 
             if minor_str and len(minor_str) > 2:
                 # Not a cents amount ("$5.999"): read it as a decimal number,
@@ -414,7 +426,16 @@ class NormalizeCurrency(AbstractTransform):
                     parts.append(f"{n2w(minor)} {_pluralize(unit_minor, minor, self._plurals)}")
             return " ".join(parts)
 
-        return _CURRENCY_RE.sub(_sub, s)
+        def _bare(match: re.Match[str]) -> str:
+            unit_major = self._unit(match.group())[0]
+            return f" {_pluralize(unit_major, 2, self._plurals)} "
+
+        for pattern in self._patterns:
+            s = pattern.sub(_sub, s)
+        return _BARE_CURRENCY_RE.sub(_bare, s)
+
+    def _unit(self, symbol: str) -> tuple[str, str]:
+        return self._symbols.get(symbol, ("dollar", "cent"))
 
 
 # ---------------------------------------------------------------------------

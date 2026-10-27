@@ -117,6 +117,7 @@ EN = LanguageData(
         "rupee": "rupees",
         "paisa": "paise",
     },
+    currency_symbol_trailing=False,
     word_for_percent="percent",
     ordinal_re=re.compile(r"\b(\d+)(st|nd|rd|th)\b", re.IGNORECASE),
     thousands_separators=",",

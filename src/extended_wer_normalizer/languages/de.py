@@ -128,6 +128,7 @@ DE = LanguageData(
         "rupie": "rupien",
         "paisa": "paisa",
     },
+    currency_symbol_trailing=True,
     word_for_percent="prozent",
     # German ordinal: 1-3 digits followed by "." and a word ("1. Januar" → "erste januar").
     # The 1-3 digit cap keeps years like "1990. " out. The lookbehind blocks decimals,

@@ -125,6 +125,7 @@ FR = LanguageData(
         "roupie": "roupies",
         "paisa": "paisas",
     },
+    currency_symbol_trailing=True,
     word_for_percent="pour cent",
     # French ordinal suffixes: 1er, 1ère, 2e, 2ème, 2es, 2èmes, 2nde, 2nds, 2nd.
     # Order longer alternatives first so e.g. "èmes" wins over "ème" + leftover "s",

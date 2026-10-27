@@ -39,6 +39,11 @@ thousands and large English amounts all normalize differently.
   `1 2 0 0 0 5 0 0 dollars` instead of `1 2 5 0 0 dollars`, because
   `num2words` writes "twelve thousand, five hundred" and the comma broke
   re-digitization. Output changes for these inputs (ML-1886).
+- Currency amounts with the symbol after the amount, the German and French
+  convention, are now recognized (ML-1801): `20 €` normalized to `2 0 €`
+  instead of matching "zwanzig euro" (`2 0 euro`). A bare symbol with no
+  amount becomes the unit name (`in €` → `in euro`) instead of surviving
+  as a stray `€`. New `LanguageData.currency_symbol_trailing` field.
 
 ## [0.7.0] - 2026-10-27
 

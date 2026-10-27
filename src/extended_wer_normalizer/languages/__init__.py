@@ -23,6 +23,11 @@ class LanguageData:
     `code` directly: the transform delegates to `text2num.alpha2digit`, which
     embeds the per-language number grammar.
 
+    `currency_symbol_trailing` is the language's written convention: "20 €"
+    (de, fr) rather than "$20" (en). Both forms are recognized; the flag only
+    decides which reading wins when a symbol sits between two numbers
+    ("5 € 20 Stück").
+
     `thousands_separators` lists the characters that group digits in written
     numbers ("12,500" / "12.500" / "12 500"); `decimal_word` is the spoken
     decimal point ("point" / "komma" / "virgule"), the canonical form both
@@ -43,6 +48,7 @@ class LanguageData:
     url_lexicon: dict[str, str]
     currency_symbols: dict[str, tuple[str, str]]
     currency_plurals: dict[str, str]
+    currency_symbol_trailing: bool
     word_for_percent: str
     ordinal_re: Pattern[str]
     thousands_separators: str

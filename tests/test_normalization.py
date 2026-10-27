@@ -427,6 +427,32 @@ def test_currency_zero_wer():
     assert wer(ref, hyp) == 0.0, f"WER={wer(ref, hyp)}"
 
 
+@pytest.mark.parametrize(
+    "language, written, spoken",
+    [
+        # Symbol after the amount, the German/French convention (ML-1801).
+        ("de", "20 €", "zwanzig euro"),
+        ("de", "5,99 €", "fünf euro neunundneunzig cent"),
+        ("de", "12.500,50 €", "zwölftausendfünfhundert euro fünfzig cent"),
+        ("fr", "20 €", "vingt euros"),
+        ("fr", "5,99 €", "cinq euros quatre-vingt-dix-neuf centimes"),
+        ("fr", "12 500 €", "douze mille cinq cents euros"),
+        ("en", "10 £", "ten pounds"),
+        # A symbol between two numbers follows the language's convention.
+        ("de", "5 € 20 Stück", "fünf euro zwanzig stück"),
+        ("en", "item 3 $5", "item three five dollars"),
+        # A symbol without an amount becomes the unit name.
+        ("de", "alles in €", "alles in euro"),
+        ("en", "prices in $", "prices in dollars"),
+    ],
+)
+def test_currency_symbol_position_converges(language, written, spoken):
+    assert normalize_for_wer(written, language) == normalize_for_wer(spoken, language), (
+        f"\n  {written!r} → {normalize_for_wer(written, language)!r}"
+        f"\n  {spoken!r} → {normalize_for_wer(spoken, language)!r}"
+    )
+
+
 # ===========================================================================
 # PERCENTAGE NORMALIZATION
 # ===========================================================================
