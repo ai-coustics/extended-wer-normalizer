@@ -6,7 +6,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Versions before 0.6.0 predate this changelog.
 
-## [Unreleased]
+## [0.8.0] - 2026-10-27
 
 **WER numbers are not comparable across this release**: decimals, grouped
 thousands and large English amounts all normalize differently.
@@ -49,6 +49,9 @@ thousands and large English amounts all normalize differently.
   dollars and ninety nine cents"; German "und", French "et") now match the
   written form (`$5.99`) via the new `DropCurrencyConjunction` transform and
   `LanguageData.currency_conjunction` field.
+- Amounts under one unit drop the zero major amount: `$0.50` →
+  "fifty cents" instead of "zero dollars fifty cents". `$0` still reads
+  "zero dollars".
 - `£` minor amounts verbalize as "pence" rather than "pennies" (`£10.50` →
   "ten pounds fifty pence"), matching how British amounts are spoken.
 
