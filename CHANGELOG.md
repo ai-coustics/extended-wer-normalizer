@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Versions before 0.6.0 predate this changelog.
 
+## [Unreleased]
+
+### Fixed
+
+- English currency amounts, percentages and ordinals of 1,000 or more that
+  aren't round no longer split into two numbers: `$12500` normalized to
+  `1 2 0 0 0 5 0 0 dollars` instead of `1 2 5 0 0 dollars`, because
+  `num2words` writes "twelve thousand, five hundred" and the comma broke
+  re-digitization. Output changes for these inputs (ML-1886).
+
 ## [0.7.0] - 2026-10-27
 
 ### Added

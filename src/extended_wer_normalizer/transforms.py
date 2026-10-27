@@ -287,6 +287,23 @@ class NormalizeSymbols(AbstractTransform):
 
 
 # ---------------------------------------------------------------------------
+# Number verbalization
+# ---------------------------------------------------------------------------
+
+
+def _num2words(n: int | float, language: str, **kwargs: str) -> str:
+    """``num2words`` with hyphens split and group commas dropped.
+
+    English output separates groups with commas ("twelve thousand, five
+    hundred"), which ``CompoundSpokenNumbersToDigits`` would read as two
+    numbers ("12000, 500") while the spoken form yields one ("12500").
+    """
+    from num2words import num2words
+
+    return num2words(n, lang=language, **kwargs).replace("-", " ").replace(",", "")
+
+
+# ---------------------------------------------------------------------------
 # Currency normalization
 # ---------------------------------------------------------------------------
 
@@ -320,10 +337,8 @@ class NormalizeCurrency(AbstractTransform):
         self._plurals = data.currency_plurals
 
     def process_string(self, s: str) -> str:
-        from num2words import num2words
-
         def n2w(n: int) -> str:
-            return num2words(n, lang=self._language).replace("-", " ")
+            return _num2words(n, self._language)
 
         def _sub(match: re.Match[str]) -> str:
             symbol = match.group(1)
@@ -361,16 +376,11 @@ class NormalizePercentages(AbstractTransform):
         self._word = get_language_data(language).word_for_percent
 
     def process_string(self, s: str) -> str:
-        from num2words import num2words
-
         def _replace(m: re.Match[str]) -> str:
             raw = m.group(1).replace(",", ".")
             val = float(raw)
-            if val == int(val):
-                spoken = num2words(int(val), lang=self._language)
-            else:
-                spoken = num2words(val, lang=self._language)
-            return f"{spoken.replace('-', ' ')} {self._word}"
+            spoken = _num2words(int(val) if val == int(val) else val, self._language)
+            return f"{spoken} {self._word}"
 
         return _PERCENT_RE.sub(_replace, s)
 
@@ -393,11 +403,8 @@ class NormalizeOrdinals(AbstractTransform):
         self._re = get_language_data(language).ordinal_re
 
     def process_string(self, s: str) -> str:
-        from num2words import num2words
-
         def _replace(m: re.Match[str]) -> str:
-            spoken = num2words(int(m.group(1)), to="ordinal", lang=self._language)
-            return spoken.replace("-", " ")
+            return _num2words(int(m.group(1)), self._language, to="ordinal")
 
         return self._re.sub(_replace, s)
 

@@ -450,6 +450,27 @@ def test_percentage_zero_wer():
     assert wer(ref, hyp) == 0.0, f"WER={wer(ref, hyp)}"
 
 
+# English num2words separates groups with commas ("twelve thousand, five
+# hundred"); left in, the verbalized amount re-digitizes as two numbers.
+@pytest.mark.parametrize(
+    "written, spoken",
+    [
+        ("$12500", "twelve thousand five hundred dollars"),
+        ("$1234", "one thousand two hundred thirty four dollars"),
+        ("$2500000", "two million five hundred thousand dollars"),
+        ("$1234.56", "one thousand two hundred thirty four dollars fifty six cents"),
+        ("12500%", "twelve thousand five hundred percent"),
+        ("1234.5%", "one thousand two hundred thirty four point five percent"),
+        ("1234th", "one thousand two hundred thirty fourth"),
+    ],
+)
+def test_large_amounts_converge_with_spoken_form(written, spoken):
+    assert normalize_for_wer(written) == normalize_for_wer(spoken), (
+        f"\n  {written!r} → {normalize_for_wer(written)!r}"
+        f"\n  {spoken!r} → {normalize_for_wer(spoken)!r}"
+    )
+
+
 # ===========================================================================
 # ORDINAL NORMALIZATION
 # ===========================================================================
