@@ -454,15 +454,20 @@ class DropCurrencyConjunction(AbstractTransform):
         majors = {major for major, _ in data.currency_symbols.values()}
         minors = {minor for _, minor in data.currency_symbols.values() if minor}
 
-        def words(units: set[str]) -> str:
-            forms = units | {data.currency_plurals.get(u, u) for u in units}
+        def units(names: set[str]) -> set[str]:
+            return names | {data.currency_plurals.get(n, n) for n in names}
+
+        def alternation(forms: set[str]) -> str:
             # Longest first, so "dollars" wins over "dollar".
             ordered = sorted(forms, key=lambda form: -len(form))
             return "|".join(map(re.escape, ordered))
 
+        # The amount is one token: digits from `CompoundSpokenNumbersToDigits`,
+        # or a single digit word it leaves alone ("one cent").
+        amount = rf"\d+|{alternation(set(data.digit_words))}"
         self._re = re.compile(
-            rf"\b({words(majors)})\s+{re.escape(data.currency_conjunction)}"
-            rf"\s+(\w+\s+(?:{words(minors)}))\b",
+            rf"\b({alternation(units(majors))})\s+{re.escape(data.currency_conjunction)}"
+            rf"\s+((?:{amount})\s+(?:{alternation(units(minors))}))\b",
             re.IGNORECASE,
         )
 

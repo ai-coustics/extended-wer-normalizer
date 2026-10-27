@@ -492,6 +492,9 @@ def test_zero_major_amount_is_not_spoken(language, written, spoken):
     [
         ("en", "dollars and cents"),
         ("en", "5 dollars and 3 friends"),
+        ("en", "prices in dollars and rounded cents"),
+        ("de", "Euro und wenige Cent"),
+        ("fr", "euros et quelques centimes"),
         ("de", "Euro und Cent"),
     ],
 )
