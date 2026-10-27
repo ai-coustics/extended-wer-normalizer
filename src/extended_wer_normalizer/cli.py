@@ -12,7 +12,9 @@ import argparse
 import sys
 from collections.abc import Iterable
 
-from . import DEFAULT_MAX_REPEATS, get_pipeline, normalize_for_wer, supported_languages
+import jiwer
+
+from . import DEFAULT_MAX_REPEATS, get_pipeline, supported_languages
 
 PROG = "extended-wer-normalizer"
 
@@ -23,7 +25,8 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Normalize text for WER evaluation. Full pipelines exist for "
             f"{', '.join(supported_languages())}; any other --language code uses the "
-            "minimal fallback (lowercase, punctuation, whitespace)."
+            "minimal fallback (lowercase, hyphen splitting, punctuation and "
+            "whitespace cleanup, repetition collapse)."
         ),
     )
     parser.add_argument(
@@ -60,15 +63,32 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _normalize_lines(lines: Iterable[str], language: str, max_repeats: int) -> None:
+def _normalize(pipeline: jiwer.Compose, text: str) -> str:
+    # Same as normalize_for_wer, with the pipeline resolved once by the caller.
+    return pipeline([text])[0].strip()
+
+
+def _normalize_lines(lines: Iterable[str], pipeline: jiwer.Compose) -> None:
     """Normalize input one line at a time, preserving line structure.
 
     A trailing newline is emitted only for lines that had one, matching cat.
     """
     for line in lines:
         has_newline = line.endswith("\n")
-        normalized = normalize_for_wer(line.rstrip("\n"), language, max_repeats)
+        normalized = _normalize(pipeline, line.rstrip("\n"))
         sys.stdout.write(normalized + ("\n" if has_newline else ""))
+
+
+def _use_utf8_stdio() -> None:
+    """Read stdin and write stdout as UTF-8, matching `--file`.
+
+    The platform default differs on Windows (cp1252 for pipes), which would
+    make piped and `--file` input normalize differently.
+    """
+    for stream in (sys.stdin, sys.stdout):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -78,11 +98,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.max_repeats < 1:
         parser.error("--max-repeats must be >= 1")
 
-    if args.language not in supported_languages():
-        print(
-            f"{PROG}: no full pipeline for language {args.language!r}; using the minimal fallback",
-            file=sys.stderr,
-        )
+    _use_utf8_stdio()
 
     if args.list_languages:
         for code in supported_languages():
@@ -90,8 +106,15 @@ def main(argv: list[str] | None = None) -> int:
         print("any other code falls back to the minimal pipeline")
         return 0
 
+    if args.language not in supported_languages():
+        print(
+            f"{PROG}: no full pipeline for language {args.language!r}; using the minimal fallback",
+            file=sys.stderr,
+        )
+    pipeline = get_pipeline(args.language, args.max_repeats)
+
     if args.describe:
-        for transform in get_pipeline(args.language, args.max_repeats).transforms:
+        for transform in pipeline.transforms:
             print(type(transform).__name__)
         return 0
 
@@ -105,12 +128,12 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.text is not None:
-            print(normalize_for_wer(args.text, args.language, args.max_repeats))
+            print(_normalize(pipeline, args.text))
         elif args.file is not None:
             with open(args.file, encoding="utf-8") as lines:
-                _normalize_lines(lines, args.language, args.max_repeats)
+                _normalize_lines(lines, pipeline)
         else:
-            _normalize_lines(sys.stdin, args.language, args.max_repeats)
+            _normalize_lines(sys.stdin, pipeline)
     except (OSError, UnicodeError) as exc:
         print(f"{PROG}: error: {exc}", file=sys.stderr)
         return 1

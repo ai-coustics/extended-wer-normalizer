@@ -1,6 +1,7 @@
 """Tests for the extended-wer-normalizer command-line interface."""
 
 import io
+import os
 import subprocess
 import sys
 
@@ -100,6 +101,43 @@ def test_list_languages(tty_stdin, capsys):
     for code in ("de", "en", "fr"):
         assert code in out.splitlines()
     assert "falls back" in out
+
+
+def test_list_languages_ignores_language_flag(tty_stdin, capsys):
+    """--list-languages normalizes nothing, so an unknown -l is not reported."""
+    assert main(["--list-languages", "-l", "xx"]) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_pipeline_built_once_per_run(monkeypatch, capsys):
+    """Custom --max-repeats builds a one-off pipeline, but only once per run."""
+    from extended_wer_normalizer import cli
+
+    calls = []
+    real_get_pipeline = cli.get_pipeline
+
+    def counting_get_pipeline(*args, **kwargs):
+        calls.append(args)
+        return real_get_pipeline(*args, **kwargs)
+
+    monkeypatch.setattr(cli, "get_pipeline", counting_get_pipeline)
+    monkeypatch.setattr(sys, "stdin", io.StringIO("no no no\nyes yes yes\nok\n"))
+    assert main(["--max-repeats", "1", "-l", "xx"]) == 0
+    assert capsys.readouterr().out == "no\nyes\nok\n"
+    assert len(calls) == 1
+
+
+def test_stdin_decoded_as_utf8_regardless_of_locale():
+    """Piped bytes are read as UTF-8 even when the platform default differs."""
+    result = subprocess.run(
+        [sys.executable, "-m", "extended_wer_normalizer", "-l", "de"],
+        input="Hr. Müller, ähm\n".encode(),
+        capture_output=True,
+        env={**os.environ, "PYTHONIOENCODING": "cp1252"},
+        check=False,
+    )
+    assert result.returncode == 0
+    assert result.stdout.decode("utf-8") == "herr müller\n"
 
 
 def test_unknown_language_falls_back_with_notice(tty_stdin, capsys):
