@@ -16,7 +16,7 @@ thousands and large English amounts all normalize differently.
 - `RemoveThousandsSeparators`, `NormalizeDecimals` and
   `DropCurrencyConjunction` transforms, plus the `thousands_separators` /
   `decimal_word` fields on `LanguageData` (en `,` / `point`; de `.` /
-  `komma`; fr space, no-break space / `virgule`).
+  `komma`; fr space, no-break space, `.` / `virgule`).
 
 ### Changed
 
@@ -34,7 +34,8 @@ thousands and large English amounts all normalize differently.
   (ML-1885): `$12,500` normalized to `1 2 dollars 5 0 cents0` and
   `€1.000` (de) to `1 euro0`; both now match their spoken forms. A currency
   amount with three or more fractional digits (`$5.999`) is read as a decimal
-  (`5 point 9 9 9 dollars`) instead of leaving a stray digit behind.
+  (`5 point 9 9 9 dollars`) instead of leaving a stray digit behind; every
+  written digit is kept, trailing zeros included (`$5.990`, `3.50%`).
 - English currency amounts, percentages and ordinals of 1,000 or more that
   aren't round no longer split into two numbers: `$12500` normalized to
   `1 2 0 0 0 5 0 0 dollars` instead of `1 2 5 0 0 dollars`, because

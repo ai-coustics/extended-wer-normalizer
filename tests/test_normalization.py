@@ -566,11 +566,18 @@ def test_large_amounts_converge_with_spoken_form(written, spoken):
         ("de", "1.500 %", "eintausendfünfhundert prozent"),
         ("fr", "€12 500", "douze mille cinq cents euros"),
         ("fr", "€12 500", "douze mille cinq cents euros"),
-        # Currency with more than two fractional digits isn't cents.
+        ("fr", "1.000 €", "mille euros"),
+        # Currency with more than two fractional digits isn't cents; every
+        # written digit is kept, trailing zeros included.
         ("en", "$5.999", "five point nine nine nine dollars"),
+        ("en", "$5.990", "five point nine nine zero dollars"),
+        ("en", "$5.000", "five point zero zero zero dollars"),
         # Decimals.
         ("en", "3.5", "three point five"),
         ("en", "3.5%", "three point five percent"),
+        ("en", "3.0%", "three point zero percent"),
+        ("en", "3.50%", "three point five zero percent"),
+        ("de", "3,50 %", "drei komma fünf null prozent"),
         ("en", "0.5", "zero point five"),
         ("en", ".5", "point five"),
         ("en", "version 2.1", "version two point one"),

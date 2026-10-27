@@ -8,7 +8,6 @@ The English defaults preserve the package's pre-0.3 behavior bit-for-bit.
 from __future__ import annotations
 
 import re
-from decimal import Decimal
 
 from jiwer import AbstractTransform
 
@@ -344,7 +343,7 @@ class NormalizeDecimals(AbstractTransform):
 # ---------------------------------------------------------------------------
 
 
-def _num2words(n: int | float | Decimal, language: str, **kwargs: str) -> str:
+def _num2words(n: int, language: str, **kwargs: str) -> str:
     """``num2words`` with hyphens split and group commas dropped.
 
     English output separates groups with commas ("twelve thousand, five
@@ -354,6 +353,18 @@ def _num2words(n: int | float | Decimal, language: str, **kwargs: str) -> str:
     from num2words import num2words
 
     return num2words(n, lang=language, **kwargs).replace("-", " ").replace(",", "")
+
+
+def _decimal_words(whole: int, fraction: str, language: str) -> str:
+    """Spell a decimal digit by digit after the point: "5", "990" → "five point
+    nine nine zero".
+
+    Going through a float (as ``num2words`` does) would drop trailing zeros
+    ("5.990" → "five point nine nine"), while the spoken form keeps them.
+    """
+    digits = " ".join(_num2words(int(d), language) for d in fraction)
+    point = get_language_data(language).decimal_word
+    return f"{_num2words(whole, language)} {point} {digits}"
 
 
 # ---------------------------------------------------------------------------
@@ -416,7 +427,7 @@ class NormalizeCurrency(AbstractTransform):
             if minor_str and len(minor_str) > 2:
                 # Not a cents amount ("$5.999"): read it as a decimal number,
                 # "five point nine nine nine dollars".
-                amount = _num2words(Decimal(f"{major}.{minor_str}"), self._language)
+                amount = _decimal_words(major, minor_str, self._language)
                 return f"{amount} {_pluralize(unit_major, 2, self._plurals)}"
 
             minor = int(minor_str.ljust(2, "0")) if minor_str else 0
@@ -496,9 +507,11 @@ class NormalizePercentages(AbstractTransform):
 
     def process_string(self, s: str) -> str:
         def _replace(m: re.Match[str]) -> str:
-            raw = m.group(1).replace(",", ".")
-            val = float(raw)
-            spoken = _num2words(int(val) if val == int(val) else val, self._language)
+            whole, _, fraction = m.group(1).replace(",", ".").partition(".")
+            if fraction:
+                spoken = _decimal_words(int(whole), fraction, self._language)
+            else:
+                spoken = _num2words(int(whole), self._language)
             return f"{spoken} {self._word}"
 
         return _PERCENT_RE.sub(_replace, s)
