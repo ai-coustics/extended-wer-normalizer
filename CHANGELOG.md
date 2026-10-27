@@ -13,14 +13,16 @@ Versions before 0.6.0 predate this changelog.
 - **English US/UK spelling-variant canonicalization** (British → American):
   `travelling` → `traveling`, `colour` → `color`, `centre` → `center`.
   Previously, a hypothesis and reference differing only in dialect spelling
-  scored one substitution per differing word. The 1,737-entry table is
+  scored one substitution per differing word. The 1,731-entry table is
   based on OpenAI Whisper's `whisper/normalizers/english.json` (MIT) —
-  the same source gladiaio/normalization draws on — with a small number of
-  documented corrections to upstream entries that change morphology rather
-  than spelling (`pummelled` → `pummeled`, `pummelling` → `pummeling`,
-  `snowploughs` → `snowplows`, and the `tranquilly` → `tranquility`
-  mapping removed) plus two scraping-artifact cleanups; see
-  `languages/en_spelling_variants.py` for the full deviation list.
+  the same source gladiaio/normalization draws on — with documented
+  corrections to upstream entries that change the word rather than only
+  its spelling (`pummelled` → `pummeled`, `pummelling` → `pummeling`,
+  `snowploughs` → `snowplows`, `philtre` → `philter`; the `tranquilly`,
+  `tonne(s)` and `gage*` mappings removed), five upstream entries that map
+  American → British flipped (e.g. `glamour` → `glamor`), and two
+  scraping-artifact cleanups; see `languages/en_spelling_variants.py` for
+  the full deviation list.
   Normalized output diverges from Whisper/Gladia on exactly those tokens.
 - New transform `NormalizeSpellingVariants`, applied in the full pipelines
   after punctuation removal. No-op for languages without a table (currently

@@ -666,6 +666,8 @@ def test_spelling_variants_normalize_full_pipeline(input_text, expected):
         ("pummelled", "pummeled"),
         ("pummelling", "pummeling"),
         ("snowploughs", "snowplows"),
+        ("a love philtre", "a love philter"),
+        ("an archaeological dig", "an archeological dig"),
     ],
 )
 def test_spelling_variants_zero_wer(ref, hyp):
@@ -682,6 +684,8 @@ def test_spelling_variants_zero_wer(ref, hyp):
     [
         ("travelling", "flying", "different word entirely"),
         ("the colour", "the smell", "one word wrong"),
+        ("a love philtre", "a love filter", "philtre is not filter"),
+        ("five tonnes", "five tons", "metric vs. short ton"),
     ],
 )
 def test_spelling_variant_errors_have_nonzero_wer(ref, hyp, description):
@@ -713,8 +717,28 @@ def test_spelling_table_documented_deviations():
     assert EN_SPELLING_VARIANTS["pummelling"] == "pummeling"
     assert EN_SPELLING_VARIANTS["snowploughs"] == "snowplows"
     assert "tranquilly" not in EN_SPELLING_VARIANTS
+    assert EN_SPELLING_VARIANTS["philtre"] == "philter"
+    assert EN_SPELLING_VARIANTS["philtres"] == "philters"
+    for removed in ("tonne", "tonnes", "gage", "gaged", "gages", "gaging"):
+        assert removed not in EN_SPELLING_VARIANTS
+    # Upstream American -> British entries, flipped to British -> American.
+    for british, american in [
+        ("archaeological", "archeological"),
+        ("battleaxe", "battleax"),
+        ("glamour", "glamor"),
+        ("travelogue", "travelog"),
+        ("travelogues", "travelogs"),
+    ]:
+        assert EN_SPELLING_VARIANTS[british] == american
+        assert american not in EN_SPELLING_VARIANTS
     assert EN_SPELLING_VARIANTS["archaeology"] == "archeology"
     assert "flyer / flier" not in EN_SPELLING_VARIANTS
+
+
+def test_spelling_table_canonical_side_is_american():
+    # No canonical value may itself be rewritten (the table is idempotent),
+    # so a reversed American -> British entry cannot hide behind a chain.
+    assert not set(EN_SPELLING_VARIANTS.values()) & set(EN_SPELLING_VARIANTS)
 
 
 # ===========================================================================

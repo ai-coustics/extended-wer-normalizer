@@ -21,6 +21,20 @@ spelling are corrected so only dialect spelling is canonicalized:
 - ``tranquilly`` entry removed (upstream maps it to the noun
   ``tranquility``): the adverb is spelt the same in American English, so
   the upstream mapping masks real recognition errors.
+- ``philtre(s) -> philter(s)`` (upstream: ``filter(s)``): upstream maps
+  the potion to a different word.
+- ``tonne``/``tonnes`` entries removed (upstream: ``ton``/``tons``):
+  different units (1,000 kg vs. 2,000 lb), not a spelling pair.
+- ``gage``/``gaged``/``gages``/``gaging`` entries removed (upstream:
+  ``gauge``...): "gage" is not a British spelling but a variant also used
+  in American English, and a separate word ("a pledge").
+- Reversed upstream entries flipped so the canonical side is American,
+  consistent with the rest of each word family: ``archaeological ->
+  archeological`` (cf. ``archaeology -> archeology``), ``battleaxe ->
+  battleax`` (cf. ``axe -> ax``), ``glamour -> glamor``, ``travelogue(s)
+  -> travelog(s)`` (cf. ``catalogue -> catalog``). Upstream maps these
+  American -> British; either direction converges for WER, but the
+  output should not mix dialects within one family.
 - ``archaeology -> archeology``: upstream value is ``"archeology</span>"``
   (HTML scraping artifact), cleaned.
 - Dropped the row keyed ``"flyer / flier"`` (value ``"flier / flyer"``):
@@ -121,11 +135,11 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "appetisingly": "appetizingly",
     "arbour": "arbor",
     "arbours": "arbors",
+    "archaeological": "archeological",  # deviates from Whisper: upstream maps US -> UK
     "archaeologically": "archeologically",
     "archaeologist": "archeologist",
     "archaeologists": "archeologists",
     "archaeology": "archeology",
-    "archeological": "archaeological",
     "ardour": "ardor",
     "armour": "armor",
     "armoured": "armored",
@@ -152,7 +166,7 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "bastardised": "bastardized",
     "bastardises": "bastardizes",
     "bastardising": "bastardizing",
-    "battleax": "battleaxe",
+    "battleaxe": "battleax",  # deviates from Whisper: upstream maps US -> UK
     "baulk": "balk",
     "baulked": "balked",
     "baulking": "balking",
@@ -667,10 +681,9 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "fulfils": "fulfills",
     "funnelled": "funneled",
     "funnelling": "funneling",
-    "gage": "gauge",
-    "gaged": "gauged",
-    "gages": "gauges",
-    "gaging": "gauging",
+    # deviates from Whisper: no "gage*" -> "gauge*" entries. "gage" is a
+    # variant spelling used in American English too (and a separate word,
+    # "a pledge"), not a British form.
     "galvanise": "galvanize",
     "galvanised": "galvanized",
     "galvanises": "galvanizes",
@@ -699,8 +712,8 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "ghettoises": "ghettoizes",
     "ghettoising": "ghettoizing",
     "gipsies": "gypsies",
-    "glamor": "glamour",
     "glamorise": "glamorize",
+    "glamour": "glamor",  # deviates from Whisper: upstream maps US -> UK
     "glamorised": "glamorized",
     "glamorises": "glamorizes",
     "glamorising": "glamorizing",
@@ -1227,8 +1240,8 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "philosophised": "philosophized",
     "philosophises": "philosophizes",
     "philosophising": "philosophizing",
-    "philtre": "filter",
-    "philtres": "filters",
+    "philtre": "philter",  # deviates from Whisper ("filter"): a different word
+    "philtres": "philters",  # deviates from Whisper ("filters"): a different word
     "phoney": "phony",
     "plagiarise": "plagiarize",
     "plagiarised": "plagiarized",
@@ -1626,8 +1639,9 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "theorised": "theorized",
     "theorises": "theorizes",
     "theorising": "theorizing",
-    "tonne": "ton",
-    "tonnes": "tons",
+    # deviates from Whisper: no "tonne(s)" -> "ton(s)" entries. A tonne
+    # (1,000 kg) and a US ton (2,000 lb) are different units, not dialect
+    # spellings of one word.
     "towelled": "toweled",
     "towelling": "toweling",
     "toxaemia": "toxemia",
@@ -1656,8 +1670,8 @@ EN_SPELLING_VARIANTS: dict[str, str] = {
     "traveller": "traveler",
     "travellers": "travelers",
     "travelling": "traveling",
-    "travelog": "travelogue",
-    "travelogs": "travelogues",
+    "travelogue": "travelog",  # deviates from Whisper: upstream maps US -> UK
+    "travelogues": "travelogs",  # deviates from Whisper: upstream maps US -> UK
     "trialled": "trialed",
     "trialling": "trialing",
     "tricolour": "tricolor",
