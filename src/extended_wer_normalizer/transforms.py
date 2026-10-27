@@ -456,7 +456,9 @@ class DropCurrencyConjunction(AbstractTransform):
 
         def words(units: set[str]) -> str:
             forms = units | {data.currency_plurals.get(u, u) for u in units}
-            return "|".join(re.escape(f) for f in sorted(forms, key=len, reverse=True))
+            # Longest first, so "dollars" wins over "dollar".
+            ordered = sorted(forms, key=lambda form: -len(form))
+            return "|".join(map(re.escape, ordered))
 
         self._re = re.compile(
             rf"\b({words(majors)})\s+{re.escape(data.currency_conjunction)}"
