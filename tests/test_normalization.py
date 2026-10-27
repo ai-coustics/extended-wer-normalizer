@@ -2,13 +2,16 @@
 
 Number normalization tests ported from aicpy/tests/test_wer_normalization.py.
 Additional tests cover email, URL, filler, abbreviation, currency, ordinal,
-percentage, and symbol normalizations.
+percentage, symbol, hyphen-compound, and spelling-variant normalizations.
 """
 
 import jiwer
 import pytest
 
 from extended_wer_normalizer import normalize_for_wer
+from extended_wer_normalizer.languages.en_spelling_variants import (
+    EN_SPELLING_VARIANTS,
+)
 from extended_wer_normalizer.transforms import (
     CollapseRepetitions,
     ExpandAbbreviations,
@@ -16,6 +19,7 @@ from extended_wer_normalizer.transforms import (
     NormalizeEmails,
     NormalizeOrdinals,
     NormalizePercentages,
+    NormalizeSpellingVariants,
     NormalizeSymbols,
     NormalizeURLs,
     RemoveFillerWords,
@@ -605,6 +609,139 @@ def test_hyphen_split_applies_to_language_agnostic_fallback():
 
 
 # ===========================================================================
+# SPELLING VARIANTS (US/UK)
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("travelling", "traveling"),
+        ("colour", "color"),
+        ("centre", "center"),
+        ("organised behaviour", "organized behavior"),
+        # Already-American spellings pass through unchanged.
+        ("traveling", "traveling"),
+        ("color", "color"),
+        # Adverb is spelt the same in US English; upstream's mapping to the
+        # noun "tranquility" is one of our documented deviations.
+        ("tranquilly", "tranquilly"),
+        # Exact whole-token match only: "coloury" contains "colour" but is not
+        # a table key, so a substring replace would corrupt it to "colory".
+        ("coloury", "coloury"),
+        ("travel", "travel"),
+        ("", ""),
+    ],
+)
+def test_normalize_spelling_variants(input_text, expected):
+    t = NormalizeSpellingVariants()
+    assert t.process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("Travelling", "traveling"),
+        # Punctuation is removed before the lookup, so attached punctuation
+        # does not shield a variant from matching.
+        ("travelling, travelling.", "traveling traveling"),
+        ("the Colour of the Centre", "the color of the center"),
+    ],
+)
+def test_spelling_variants_normalize_full_pipeline(input_text, expected):
+    assert normalize_for_wer(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        # British vs American spellings of the same words must score zero in
+        # both directions.
+        ("I am travelling to London", "I am traveling to London"),
+        ("I am traveling to London", "I am travelling to London"),
+        ("the colour of the centre", "the color of the center"),
+        ("organised behaviour", "organized behavior"),
+        ("my favourite aeroplane", "my favorite airplane"),
+        # Corrected upstream entries: inflection preserved, not just spelling.
+        ("pummelled", "pummeled"),
+        ("pummelling", "pummeling"),
+        ("snowploughs", "snowplows"),
+        ("a love philtre", "a love philter"),
+        ("an archaeological dig", "an archeological dig"),
+    ],
+)
+def test_spelling_variants_zero_wer(ref, hyp):
+    score = wer(ref, hyp)
+    assert score == 0.0, (
+        f"\nWER={score:.4f} (expected 0.0)"
+        f"\n  ref: {ref!r} → {normalize_for_wer(ref)!r}"
+        f"\n  hyp: {hyp!r} → {normalize_for_wer(hyp)!r}"
+    )
+
+
+@pytest.mark.parametrize(
+    "ref, hyp, description",
+    [
+        ("travelling", "flying", "different word entirely"),
+        ("the colour", "the smell", "one word wrong"),
+        ("a love philtre", "a love filter", "philtre is not filter"),
+        ("five tonnes", "five tons", "metric vs. short ton"),
+    ],
+)
+def test_spelling_variant_errors_have_nonzero_wer(ref, hyp, description):
+    score = wer(ref, hyp)
+    assert score > 0.0, f"[{description}] Expected WER > 0 but got {score}"
+
+
+@pytest.mark.parametrize("language", ["de", "fr"])
+def test_spelling_variants_noop_for_other_languages(language):
+    # Only English ships a spelling-variant table; other pipelines must not
+    # rewrite these tokens.
+    assert normalize_for_wer("travelling colour", language=language) == "travelling colour"
+
+
+def test_spelling_variants_not_in_language_agnostic_fallback():
+    assert normalize_for_wer("travelling", language="es") == "travelling"
+
+
+def test_spelling_variants_idempotent():
+    once = normalize_for_wer("travelling to the centre, my favourite colour")
+    assert normalize_for_wer(once) == once
+
+
+def test_spelling_table_documented_deviations():
+    # Locks the deliberate deviations from Whisper's english.json listed in
+    # the en_spelling_variants.py header. Re-vendoring the upstream table
+    # would reintroduce the morphology-changing mappings below and fail here.
+    assert EN_SPELLING_VARIANTS["pummelled"] == "pummeled"
+    assert EN_SPELLING_VARIANTS["pummelling"] == "pummeling"
+    assert EN_SPELLING_VARIANTS["snowploughs"] == "snowplows"
+    assert "tranquilly" not in EN_SPELLING_VARIANTS
+    assert EN_SPELLING_VARIANTS["philtre"] == "philter"
+    assert EN_SPELLING_VARIANTS["philtres"] == "philters"
+    for removed in ("tonne", "tonnes", "gage", "gaged", "gages", "gaging"):
+        assert removed not in EN_SPELLING_VARIANTS
+    # Upstream American -> British entries, flipped to British -> American.
+    for british, american in [
+        ("archaeological", "archeological"),
+        ("battleaxe", "battleax"),
+        ("glamour", "glamor"),
+        ("travelogue", "travelog"),
+        ("travelogues", "travelogs"),
+    ]:
+        assert EN_SPELLING_VARIANTS[british] == american
+        assert american not in EN_SPELLING_VARIANTS
+    assert EN_SPELLING_VARIANTS["archaeology"] == "archeology"
+    assert "flyer / flier" not in EN_SPELLING_VARIANTS
+
+
+def test_spelling_table_canonical_side_is_american():
+    # No canonical value may itself be rewritten (the table is idempotent),
+    # so a reversed American -> British entry cannot hide behind a chain.
+    assert not set(EN_SPELLING_VARIANTS.values()) & set(EN_SPELLING_VARIANTS)
+
+
+# ===========================================================================
 # IDEMPOTENCE — all new transforms applied twice = applied once
 # ===========================================================================
 
@@ -616,6 +753,7 @@ def test_hyphen_split_applies_to_language_agnostic_fallback():
         "1st place Dr. Smith with 100% at https://example.com",
         "um I I think it costs $3.50",
         "visit https://my-site.org or call us",
+        "I am travelling to the centre, my favourite colour",
     ],
 )
 def test_full_pipeline_idempotent(text):

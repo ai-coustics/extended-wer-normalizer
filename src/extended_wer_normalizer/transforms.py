@@ -454,3 +454,36 @@ class ExpandFrenchElisions(AbstractTransform):
 
     def process_string(self, s: str) -> str:
         return _FR_ELISIONS_RE.sub(lambda m: m.group(1) + " ", s)
+
+
+# ---------------------------------------------------------------------------
+# Dialect spelling variants
+# ---------------------------------------------------------------------------
+
+
+class NormalizeSpellingVariants(AbstractTransform):
+    """Canonicalize dialect spellings: "travelling" → "traveling".
+
+    English maps British spellings to American ones using
+    `LanguageData.spelling_variants` (adapted from Whisper's
+    `EnglishSpellingNormalizer` table). Without this step, a hypothesis and
+    reference that differ only in dialect spelling score one substitution per
+    differing word ("colour" vs. "color") although the utterance is identical.
+
+    Exact-match lookup over whitespace-separated tokens, so words that merely
+    contain a variant as a substring are never touched. Must run after
+    `ToLowerCase` (table keys are lowercase) and after `RemovePunctuation`
+    (so tokens carry no attached punctuation for the split to isolate).
+
+    No-op for languages with an empty `spelling_variants` map (currently
+    everything but "en").
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        self._variants = get_language_data(language).spelling_variants
+
+    def process_string(self, s: str) -> str:
+        if not self._variants or not s:
+            return s
+        get = self._variants.get
+        return " ".join(get(token, token) for token in s.split())

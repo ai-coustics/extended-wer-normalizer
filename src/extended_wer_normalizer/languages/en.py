@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from . import LanguageData, register
+from .en_spelling_variants import EN_SPELLING_VARIANTS
 
 EN = LanguageData(
     code="en",
@@ -118,6 +119,7 @@ EN = LanguageData(
     },
     word_for_percent="percent",
     ordinal_re=re.compile(r"\b(\d+)(st|nd|rd|th)\b", re.IGNORECASE),
+    spelling_variants=EN_SPELLING_VARIANTS,
 )
 
 register(EN)

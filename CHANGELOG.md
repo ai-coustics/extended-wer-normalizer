@@ -6,7 +6,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Versions before 0.6.0 predate this changelog.
 
-## [0.7.0] - 2026-10-16
+## [0.7.0] - 2026-10-27
 
 ### Added
 
@@ -22,6 +22,27 @@ Versions before 0.6.0 predate this changelog.
 - Public `get_pipeline(language, max_repeats=...)` helper: the
   pipeline-selection logic previously private inside `normalize_for_wer`, now
   shared between the API and the CLI.
+- **English US/UK spelling-variant canonicalization** (British → American):
+  `travelling` → `traveling`, `colour` → `color`, `centre` → `center`.
+  Previously, a hypothesis and reference differing only in dialect spelling
+  scored one substitution per differing word. The 1,731-entry table is
+  based on OpenAI Whisper's `whisper/normalizers/english.json` (MIT) —
+  the same source gladiaio/normalization draws on — with documented
+  corrections to upstream entries that change the word rather than only
+  its spelling (`pummelled` → `pummeled`, `pummelling` → `pummeling`,
+  `snowploughs` → `snowplows`, `philtre` → `philter`; the `tranquilly`,
+  `tonne(s)` and `gage*` mappings removed), five upstream entries that map
+  American → British flipped (e.g. `glamour` → `glamor`), and two
+  scraping-artifact cleanups; see `languages/en_spelling_variants.py` for
+  the full deviation list.
+  Normalized output diverges from Whisper/Gladia on exactly those tokens.
+- New transform `NormalizeSpellingVariants`, applied in the full pipelines
+  after punctuation removal. No-op for languages without a table (currently
+  de, fr) and not part of the minimal fallback pipeline.
+- **WER numbers computed with ≤ 0.6.0 are not comparable to ≥ 0.7.0 for
+  English text containing dialect spelling variation** — such pairs now
+  score zero instead of one substitution per word. Recompute cached results
+  before comparing across the boundary.
 
 ## [0.6.0] - 2026-09-28
 

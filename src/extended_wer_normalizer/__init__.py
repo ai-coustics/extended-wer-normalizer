@@ -16,6 +16,7 @@ from .transforms import (
     NormalizeEmails,
     NormalizeOrdinals,
     NormalizePercentages,
+    NormalizeSpellingVariants,
     NormalizeSymbols,
     NormalizeURLs,
     RemoveFillerWords,
@@ -39,6 +40,7 @@ __all__ = [
     "NormalizeEmails",
     "NormalizeOrdinals",
     "NormalizePercentages",
+    "NormalizeSpellingVariants",
     "NormalizeSymbols",
     "NormalizeURLs",
     "RemoveFillerWords",
@@ -104,6 +106,9 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
             # ("twenty-one", "quatre-vingt-quatorze") keep their structure.
             SplitHyphenatedWords(),
             jiwer.RemovePunctuation(),
+            # Spelling variants map whole tokens, so they need punctuation
+            # already removed ("colour," → "colour") and lowercase applied.
+            NormalizeSpellingVariants(language),
             ExpandDigitRuns(),
             DigitWordsToChars(language),
             jiwer.RemoveMultipleSpaces(),
@@ -147,9 +152,11 @@ def normalize_for_wer(
 
     Supported full-pipeline languages: "en", "de", "fr". Each runs the same
     structure (pattern normalization → lowercase → intra-word hyphen splitting →
-    punctuation removal → digit normalization → cleanup) with language-specific
-    lexicons and a custom contraction step (English contractions for "en",
-    elision splitting for "fr", none for "de").
+    punctuation removal → spelling-variant canonicalization → digit
+    normalization → cleanup) with language-specific lexicons and a custom
+    contraction step (English contractions for "en", elision splitting for
+    "fr", none for "de"). Spelling-variant canonicalization currently only
+    ships a table for English (British → American); it is a no-op elsewhere.
 
     For any other `language` value, applies a minimal language-agnostic pipeline:
     lowercase, intra-word hyphen splitting, punctuation removal, whitespace
