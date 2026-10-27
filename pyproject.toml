@@ -7,7 +7,7 @@ packages = ["src/extended_wer_normalizer"]
 
 [project]
 name = "extended-wer-normalizer"
-version = "0.6.0"
+version = "0.7.0"
 description = "jiwer-compatible WER normalizer with number, email, URL, filler, and symbol normalization for voice AI evaluation in English, German, and French"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -31,6 +31,9 @@ dependencies = [
     "num2words>=0.5",
     "text2num>=2.5",
 ]
+
+[project.scripts]
+extended-wer-normalizer = "extended_wer_normalizer.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/ai-coustics/extended-wer-normalizer"
