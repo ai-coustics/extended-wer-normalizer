@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Versions before 0.6.0 predate this changelog.
 
+## [Unreleased]
+
+**WER numbers are not comparable across this release** for English text
+with typographic apostrophes or the spellings listed below.
+
+### Added
+
+- `NormalizeApostrophes` transform, run in the English pipeline before
+  contraction expansion.
+- 148 British → American spelling entries beyond the Whisper-derived table
+  (ML-2059): the -isation nouns and plurals of -ise verbs already in the
+  table (`authorisation` → `authorization`, `civilisation` →
+  `civilization`) and -centre compounds (`telecentre` → `telecenter`).
+
+### Fixed
+
+- English contractions with a typographic apostrophe now expand like the
+  ASCII form (ML-2059): `He’s married` normalized to `hes married` and
+  `don’t` to `dont`; both now give `he is married` and `do not`. Quote marks
+  at word edges (`‘sorry’`) are unchanged.
+
 ## [0.8.0] - 2026-10-27
 
 **WER numbers are not comparable across this release**: decimals, grouped
