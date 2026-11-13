@@ -9,12 +9,18 @@ Versions before 0.6.0 predate this changelog.
 ## [Unreleased]
 
 **WER numbers are not comparable across this release** for English text
-with typographic apostrophes or the spellings listed below.
+with typographic apostrophes, the spellings listed below, or given names
+with variant spellings.
 
 ### Added
 
 - `NormalizeApostrophes` transform, run in the English pipeline before
   contraction expansion.
+- `NormalizeNameVariants` transform and `LanguageData.name_variants` field
+  (ML-2059). English merges spellings of the same given name that sound
+  identical (`Stephen` → `Steven`, `Balthasar` → `Balthazar`), since no STT
+  can tell them apart from audio. The curated table and its inclusion rule
+  live in `languages/en_name_variants.py`. Runs after spelling variants.
 - 148 British → American spelling entries beyond the Whisper-derived table
   (ML-2059): the -isation nouns and plurals of -ise verbs already in the
   table (`authorisation` → `authorization`, `civilisation` →

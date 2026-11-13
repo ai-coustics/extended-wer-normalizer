@@ -618,11 +618,23 @@ class ExpandFrenchElisions(AbstractTransform):
 
 
 # ---------------------------------------------------------------------------
-# Dialect spelling variants
+# Dialect spelling and name variants
 # ---------------------------------------------------------------------------
 
 
-class NormalizeSpellingVariants(AbstractTransform):
+class _TokenMapTransform(AbstractTransform):
+    """Replace each whitespace-separated token found in `self._variants`."""
+
+    _variants: dict[str, str]
+
+    def process_string(self, s: str) -> str:
+        if not self._variants or not s:
+            return s
+        get = self._variants.get
+        return " ".join(get(token, token) for token in s.split())
+
+
+class NormalizeSpellingVariants(_TokenMapTransform):
     """Canonicalize dialect spellings: "travelling" → "traveling".
 
     English maps British spellings to American ones using
@@ -643,8 +655,15 @@ class NormalizeSpellingVariants(AbstractTransform):
     def __init__(self, language: str = "en") -> None:
         self._variants = get_language_data(language).spelling_variants
 
-    def process_string(self, s: str) -> str:
-        if not self._variants or not s:
-            return s
-        get = self._variants.get
-        return " ".join(get(token, token) for token in s.split())
+
+class NormalizeNameVariants(_TokenMapTransform):
+    """Merge spellings of the same given name: "stephen" → "steven".
+
+    Uses `LanguageData.name_variants` (English: `en_name_variants`, which
+    documents the inclusion rule). Same token lookup and placement
+    constraints as `NormalizeSpellingVariants`. No-op for languages with an
+    empty map (currently everything but "en").
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        self._variants = get_language_data(language).name_variants

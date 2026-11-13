@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from . import LanguageData, register
+from .en_name_variants import EN_NAME_VARIANTS
 from .en_spelling_variants import EN_SPELLING_VARIANTS
 
 EN = LanguageData(
@@ -124,6 +125,7 @@ EN = LanguageData(
     thousands_separators=",",
     decimal_word="point",
     spelling_variants=EN_SPELLING_VARIANTS,
+    name_variants=EN_NAME_VARIANTS,
 )
 
 register(EN)

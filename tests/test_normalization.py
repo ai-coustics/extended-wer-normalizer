@@ -9,6 +9,7 @@ import jiwer
 import pytest
 
 from extended_wer_normalizer import normalize_for_wer
+from extended_wer_normalizer.languages.en_name_variants import EN_NAME_VARIANTS
 from extended_wer_normalizer.languages.en_spelling_variants import (
     EN_SPELLING_VARIANTS,
 )
@@ -20,6 +21,7 @@ from extended_wer_normalizer.transforms import (
     NormalizeCurrency,
     NormalizeDecimals,
     NormalizeEmails,
+    NormalizeNameVariants,
     NormalizeOrdinals,
     NormalizePercentages,
     NormalizeSpellingVariants,
@@ -1010,6 +1012,53 @@ def test_spelling_table_canonical_side_is_american():
     # No canonical value may itself be rewritten (the table is idempotent),
     # so a reversed American -> British entry cannot hide behind a chain.
     assert not set(EN_SPELLING_VARIANTS.values()) & set(EN_SPELLING_VARIANTS)
+
+
+# ===========================================================================
+# NAME VARIANTS
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("stephen", "steven"),
+        ("balthasar", "balthazar"),
+        ("katherine and kathryn", "catherine and catherine"),
+        # Canonical spellings and non-name words pass through.
+        ("steven", "steven"),
+        ("mark the grey door", "mark the grey door"),
+        ("", ""),
+    ],
+)
+def test_normalize_name_variants(input_text, expected):
+    assert NormalizeNameVariants().process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        ("Balthasar arrived", "Balthazar arrived"),
+        ("Stephen and Jon", "Steven and John"),
+        ("Mohammed’s brother", "Muhammad's brother"),
+    ],
+)
+def test_name_variants_zero_wer(ref, hyp):
+    assert wer(ref, hyp) == 0.0
+
+
+def test_name_variants_different_names_nonzero_wer():
+    assert wer("Steven arrived", "Stefan arrived") > 0.0
+
+
+@pytest.mark.parametrize("language", ["de", "fr", "es"])
+def test_name_variants_english_only(language):
+    assert normalize_for_wer("Stephen", language=language) == "stephen"
+
+
+def test_name_table_is_idempotent_and_disjoint_from_spelling_table():
+    assert not set(EN_NAME_VARIANTS.values()) & set(EN_NAME_VARIANTS)
+    assert not set(EN_NAME_VARIANTS) & set(EN_SPELLING_VARIANTS)
 
 
 # ===========================================================================
