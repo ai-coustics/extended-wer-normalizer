@@ -1800,10 +1800,7 @@ _UPSTREAM: dict[str, str] = {
     "yoghurts": "yogurts",
 }
 
-# Not in upstream: -isation nouns (and plurals) whose -ise verb is already in
-# the table above, plus -centre compounds. Each value is the American form of
-# the same word, so these are dialect canonicalizations like every upstream
-# entry. Kept separate so the upstream-derived table stays easy to diff.
+# Not in upstream; see "Added entries" in the module header.
 _ADDITIONS: dict[str, str] = {
     "anglicisation": "anglicization",
     "anglicisations": "anglicizations",
