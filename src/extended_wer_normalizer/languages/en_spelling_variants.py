@@ -57,7 +57,7 @@ All keys and values are single lowercase alphabetic tokens, which lets
 `NormalizeSpellingVariants` do a plain per-token dict lookup.
 """
 
-EN_SPELLING_VARIANTS: dict[str, str] = {
+_UPSTREAM: dict[str, str] = {
     "accessorise": "accessorize",
     "accessorised": "accessorized",
     "accessorises": "accessorizes",
@@ -1955,4 +1955,4 @@ _ADDITIONS: dict[str, str] = {
     "verbalisations": "verbalizations",
 }
 
-EN_SPELLING_VARIANTS |= _ADDITIONS
+EN_SPELLING_VARIANTS: dict[str, str] = _UPSTREAM | _ADDITIONS
