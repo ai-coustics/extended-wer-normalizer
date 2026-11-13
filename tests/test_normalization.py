@@ -9,6 +9,7 @@ import jiwer
 import pytest
 
 from extended_wer_normalizer import normalize_for_wer
+from extended_wer_normalizer.languages.en_name_variants import EN_NAME_VARIANTS
 from extended_wer_normalizer.languages.en_spelling_variants import (
     _ADDITIONS,
     _UPSTREAM,
@@ -22,6 +23,7 @@ from extended_wer_normalizer.transforms import (
     NormalizeCurrency,
     NormalizeDecimals,
     NormalizeEmails,
+    NormalizeNameVariants,
     NormalizeOrdinals,
     NormalizePercentages,
     NormalizeSpellingVariants,
@@ -1014,6 +1016,64 @@ def test_spelling_table_canonical_side_is_american():
 
 
 # ===========================================================================
+# NAME VARIANTS
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("stephen", "steven"),
+        ("balthasar", "balthazar"),
+        ("katherine and kathryn", "catherine and catherine"),
+        # Canonical spellings and non-name words pass through.
+        ("steven", "steven"),
+        ("mark the grey door", "mark the grey door"),
+        ("", ""),
+    ],
+)
+def test_normalize_name_variants(input_text, expected):
+    assert NormalizeNameVariants().process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        ("Balthasar arrived", "Balthazar arrived"),
+        ("Stephen and Jon", "Steven and John"),
+        ("Mohammed’s brother", "Muhammad's brother"),
+    ],
+)
+def test_name_variants_zero_wer(ref, hyp):
+    assert wer(ref, hyp) == 0.0
+
+
+def test_name_variants_different_names_nonzero_wer():
+    assert wer("Steven arrived", "Stefan arrived") > 0.0
+
+
+@pytest.mark.parametrize("language", ["de", "fr", "es"])
+def test_name_variants_english_only(language):
+    assert normalize_for_wer("Stephen", language=language) == "stephen"
+
+
+def test_name_table_is_idempotent_and_disjoint_from_spelling_table():
+    assert not set(EN_NAME_VARIANTS.values()) & set(EN_NAME_VARIANTS)
+    assert not set(EN_NAME_VARIANTS) & set(EN_SPELLING_VARIANTS)
+    # Names run after spellings, so a canonical name that is also a spelling
+    # key would be rewritten again on a second pass.
+    assert not set(EN_NAME_VARIANTS.values()) & set(EN_SPELLING_VARIANTS)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [("the Allen key", "the allen key"), ("Sofia, Bulgaria", "sofia bulgaria")],
+)
+def test_name_variants_leave_common_words_alone(text, expected):
+    assert normalize_for_wer(text) == expected
+
+
+# ===========================================================================
 # IDEMPOTENCE — all new transforms applied twice = applied once
 # ===========================================================================
 
@@ -1026,6 +1086,7 @@ def test_spelling_table_canonical_side_is_american():
         "um I I think it costs $3.50",
         "visit https://my-site.org or call us",
         "I am travelling to the centre, my favourite colour",
+        "He’s Stephen’s friend from the telecentre",
     ],
 )
 def test_full_pipeline_idempotent(text):

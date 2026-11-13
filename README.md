@@ -95,6 +95,7 @@ wer = jiwer.wer(reference, hypothesis, reference_transform=transform, hypothesis
 | `SplitHyphenatedWords` | `"fixed-term"` → `"fixed term"` |
 | `NormalizeApostrophes` | `"he’s"` → `"he's"` (typographic apostrophe inside a word → ASCII, so contractions expand) |
 | `NormalizeSpellingVariants` | `"travelling"` → `"traveling"`, `"colour"` → `"color"` (British → American; English only) |
+| `NormalizeNameVariants` | `"stephen"` → `"steven"`, `"balthasar"` → `"balthazar"` (spellings of the same given name; English only) |
 | `RemoveFillerWords` | removes `um`, `uh`, `hmm`, `er`, `ah`, … |
 | `CollapseRepetitions` | `"yes yes yes yes"` → `"yes"` (collapses runs of 4+; configurable via `max_repeats`) |
 | `ExpandFrenchElisions` | `"j'aime"` → `"j aime"`, `"qu'il"` → `"qu il"` (French only) |
@@ -107,7 +108,7 @@ The English pipeline applies transforms left-to-right in a single pass:
 
 1. **Pattern-specific** (before punctuation is stripped): email, URL, thousands separators (`12,500` → `12500`), symbol, abbreviation, currency, percentage, ordinal
 2. **Core**: contractions, with typographic apostrophes accepted (`I'm`, `I’m` → `i am`), compound number words to digits (`twenty one` → `21`), decimals (`3.5` → `3 point 5`), spoken currency conjunction (`5 dollars and 99 cents` → `5 dollars 99 cents`), lowercase, intra-word hyphen split (`fixed-term` → `fixed term`), punctuation removal
-3. **Spelling variants** (English only): British → American (`travelling` → `traveling`)
+3. **Spelling and name variants** (English only): British → American (`travelling` → `traveling`), given-name spellings (`stephen` → `steven`)
 4. **Digit normalization**: expand digit runs (`0176` → `0 1 7 6`, `21` → `2 1`), convert digit words (`zero` → `0`)
 5. **Cleanup**: filler words, repetition collapse
 

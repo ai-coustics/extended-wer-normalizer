@@ -17,6 +17,7 @@ from .transforms import (
     NormalizeCurrency,
     NormalizeDecimals,
     NormalizeEmails,
+    NormalizeNameVariants,
     NormalizeOrdinals,
     NormalizePercentages,
     NormalizeSpellingVariants,
@@ -45,6 +46,7 @@ __all__ = [
     "NormalizeCurrency",
     "NormalizeDecimals",
     "NormalizeEmails",
+    "NormalizeNameVariants",
     "NormalizeOrdinals",
     "NormalizePercentages",
     "NormalizeSpellingVariants",
@@ -126,6 +128,7 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
             # Spelling variants map whole tokens, so they need punctuation
             # already removed ("colour," → "colour") and lowercase applied.
             NormalizeSpellingVariants(language),
+            NormalizeNameVariants(language),
             ExpandDigitRuns(),
             DigitWordsToChars(language),
             jiwer.RemoveMultipleSpaces(),
