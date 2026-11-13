@@ -10,6 +10,8 @@ import pytest
 
 from extended_wer_normalizer import normalize_for_wer
 from extended_wer_normalizer.languages.en_spelling_variants import (
+    _ADDITIONS,
+    _UPSTREAM,
     EN_SPELLING_VARIANTS,
 )
 from extended_wer_normalizer.transforms import (
@@ -831,6 +833,7 @@ def test_hyphen_split_applies_to_language_agnostic_fallback():
     [
         ("he’s", "he's"),
         ("don‘t", "don't"),
+        ("heʼs", "he's"),
         # Quote marks at word edges are not apostrophes.
         ("‘sorry’", "‘sorry’"),
         ("the students’ books", "the students’ books"),
@@ -1001,9 +1004,7 @@ def test_spelling_variant_additions_zero_wer(ref, hyp):
 
 
 def test_spelling_table_additions_do_not_override_upstream():
-    from extended_wer_normalizer.languages.en_spelling_variants import _ADDITIONS
-
-    assert len(EN_SPELLING_VARIANTS) == 1731 + len(_ADDITIONS)
+    assert not set(_ADDITIONS) & set(_UPSTREAM)
 
 
 def test_spelling_table_canonical_side_is_american():

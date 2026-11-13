@@ -574,17 +574,17 @@ class SplitHyphenatedWords(AbstractTransform):
 # Typographic apostrophes
 # ---------------------------------------------------------------------------
 
-# A typographic apostrophe (’ U+2019, or a misused ‘ U+2018) between two word
-# characters. Quote marks at a word edge ("‘sorry’") are left alone.
-_TYPOGRAPHIC_APOSTROPHE_RE = re.compile(r"(?<=\w)[’‘](?=\w)")
+# A typographic apostrophe (’ U+2019, ʼ U+02BC, or a misused ‘ U+2018) between
+# two word characters. Quote marks at a word edge ("‘sorry’") are left alone.
+_TYPOGRAPHIC_APOSTROPHE_RE = re.compile(r"(?<=\w)[’ʼ‘](?=\w)")
 
 
 class NormalizeApostrophes(AbstractTransform):
     """Replace typographic apostrophes inside words with ASCII: he’s → he's.
 
-    jiwer.ExpandCommonEnglishContractions only matches the ASCII apostrophe,
-    so without this step "he’s" lost its apostrophe in punctuation removal
-    and became "hes" while "he's" became "he is". Must run before the
+    jiwer.ExpandCommonEnglishContractions only matches the ASCII apostrophe;
+    without this step "he’s" loses its apostrophe in punctuation removal and
+    becomes "hes", while "he's" becomes "he is". Must run before the
     contraction step.
     """
 
