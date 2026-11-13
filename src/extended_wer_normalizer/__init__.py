@@ -13,6 +13,7 @@ from .transforms import (
     ExpandAbbreviations,
     ExpandDigitRuns,
     ExpandFrenchElisions,
+    NormalizeApostrophes,
     NormalizeCurrency,
     NormalizeDecimals,
     NormalizeEmails,
@@ -40,6 +41,7 @@ __all__ = [
     "ExpandAbbreviations",
     "ExpandDigitRuns",
     "ExpandFrenchElisions",
+    "NormalizeApostrophes",
     "NormalizeCurrency",
     "NormalizeDecimals",
     "NormalizeEmails",
@@ -93,6 +95,7 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
 
     # Language-specific contraction handling.
     if language == "en":
+        steps.append(NormalizeApostrophes())
         steps.append(jiwer.ExpandCommonEnglishContractions())
     elif language == "fr":
         steps.append(ExpandFrenchElisions())

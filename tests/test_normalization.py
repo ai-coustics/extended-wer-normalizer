@@ -16,6 +16,7 @@ from extended_wer_normalizer.transforms import (
     CollapseRepetitions,
     DropCurrencyConjunction,
     ExpandAbbreviations,
+    NormalizeApostrophes,
     NormalizeCurrency,
     NormalizeDecimals,
     NormalizeEmails,
@@ -821,6 +822,43 @@ def test_hyphen_split_applies_to_language_agnostic_fallback():
 
 
 # ===========================================================================
+# TYPOGRAPHIC APOSTROPHES
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("he’s", "he's"),
+        ("don‘t", "don't"),
+        # Quote marks at word edges are not apostrophes.
+        ("‘sorry’", "‘sorry’"),
+        ("the students’ books", "the students’ books"),
+        ("", ""),
+    ],
+)
+def test_normalize_apostrophes(input_text, expected):
+    assert NormalizeApostrophes().process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("He’s married.", "he is married"),
+        ("Men don’t live", "men do not live"),
+        ("I’m sure it’ll work", "i am sure it will work"),
+        ("‘sorry’ she said", "sorry she said"),
+    ],
+)
+def test_typographic_apostrophes_full_pipeline(input_text, expected):
+    assert normalize_for_wer(input_text) == expected
+
+
+def test_typographic_and_ascii_apostrophes_zero_wer():
+    assert wer("He’s married, men don’t live", "He's married, men don't live") == 0.0
+
+
+# ===========================================================================
 # SPELLING VARIANTS (US/UK)
 # ===========================================================================
 
@@ -945,6 +983,27 @@ def test_spelling_table_documented_deviations():
         assert american not in EN_SPELLING_VARIANTS
     assert EN_SPELLING_VARIANTS["archaeology"] == "archeology"
     assert "flyer / flier" not in EN_SPELLING_VARIANTS
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        # Additions beyond the upstream table (ML-2059).
+        ("telecentre", "telecenter"),
+        ("the authorisation was granted", "the authorization was granted"),
+        ("authorisations", "authorizations"),
+        ("western civilisation", "western civilization"),
+        ("capitalisation", "capitalization"),
+    ],
+)
+def test_spelling_variant_additions_zero_wer(ref, hyp):
+    assert wer(ref, hyp) == 0.0
+
+
+def test_spelling_table_additions_do_not_override_upstream():
+    from extended_wer_normalizer.languages.en_spelling_variants import _ADDITIONS
+
+    assert len(EN_SPELLING_VARIANTS) == 1731 + len(_ADDITIONS)
 
 
 def test_spelling_table_canonical_side_is_american():
