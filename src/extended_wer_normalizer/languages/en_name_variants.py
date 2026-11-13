@@ -24,7 +24,8 @@ rule, not one-off spellings found in a single dataset.
 
 _GROUPS: dict[str, tuple[str, ...]] = {
     "aidan": ("aiden",),
-    "alan": ("allan", "allen"),
+    # "allen" is left out: "allen key" / "allen wrench" are common nouns.
+    "alan": ("allan",),
     "anne": ("ann",),
     "ashley": ("ashleigh",),
     "balthazar": ("balthasar",),
@@ -49,7 +50,7 @@ _GROUPS: dict[str, tuple[str, ...]] = {
     "rachel": ("rachael",),
     "sarah": ("sara",),
     "sean": ("shawn", "shaun"),
-    "sophia": ("sofia",),
+    # "sofia" is left out: it is also the capital of Bulgaria.
     "steven": ("stephen",),
     "teresa": ("theresa",),
     "zachary": ("zachery", "zackary"),

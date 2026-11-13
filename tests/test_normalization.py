@@ -1060,6 +1060,17 @@ def test_name_variants_english_only(language):
 def test_name_table_is_idempotent_and_disjoint_from_spelling_table():
     assert not set(EN_NAME_VARIANTS.values()) & set(EN_NAME_VARIANTS)
     assert not set(EN_NAME_VARIANTS) & set(EN_SPELLING_VARIANTS)
+    # Names run after spellings, so a canonical name that is also a spelling
+    # key would be rewritten again on a second pass.
+    assert not set(EN_NAME_VARIANTS.values()) & set(EN_SPELLING_VARIANTS)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [("the Allen key", "the allen key"), ("Sofia, Bulgaria", "sofia bulgaria")],
+)
+def test_name_variants_leave_common_words_alone(text, expected):
+    assert normalize_for_wer(text) == expected
 
 
 # ===========================================================================
@@ -1075,6 +1086,7 @@ def test_name_table_is_idempotent_and_disjoint_from_spelling_table():
         "um I I think it costs $3.50",
         "visit https://my-site.org or call us",
         "I am travelling to the centre, my favourite colour",
+        "He’s Stephen’s friend from the telecentre",
     ],
 )
 def test_full_pipeline_idempotent(text):
