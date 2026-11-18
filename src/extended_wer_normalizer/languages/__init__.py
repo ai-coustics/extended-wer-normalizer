@@ -44,6 +44,10 @@ class LanguageData:
     `name_variants` maps spellings of the same given name to one canonical
     spelling ("stephen" → "steven"); empty means `NormalizeNameVariants` is
     a no-op.
+
+    `colloquial_forms` maps spoken short forms to their full written form
+    ("hab" → "habe", "gibts" → "gibt es", "okay" → "ok"); empty means
+    `NormalizeColloquialForms` is a no-op.
     """
 
     code: str
@@ -64,6 +68,7 @@ class LanguageData:
     decimal_word: str
     spelling_variants: dict[str, str] = field(default_factory=dict)
     name_variants: dict[str, str] = field(default_factory=dict)
+    colloquial_forms: dict[str, str] = field(default_factory=dict)
 
 
 _REGISTRY: dict[str, LanguageData] = {}

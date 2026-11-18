@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from . import LanguageData, register
+from .de_colloquial_forms import DE_COLLOQUIAL_FORMS
 
 DE = LanguageData(
     code="de",
@@ -137,6 +138,7 @@ DE = LanguageData(
     ordinal_re=re.compile(r"(?<!\w)(\d{1,3})\.(?=\s+\w)"),
     thousands_separators=".",
     decimal_word="komma",
+    colloquial_forms=DE_COLLOQUIAL_FORMS,
 )
 
 register(DE)

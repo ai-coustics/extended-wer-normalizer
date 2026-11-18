@@ -35,6 +35,21 @@ class ExpandDigitRuns(AbstractTransform):
         return re.sub(r"(?<![.,\d])\d{2,}", lambda m: " ".join(m.group()), s)
 
 
+_LETTER_DIGIT_BOUNDARY_RE = re.compile(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])")
+
+
+class SplitLetterDigitBoundaries(AbstractTransform):
+    """Put a space between letters and digits: "user123" → "user 123".
+
+    Without it, ExpandDigitRuns splits only the digits and leaves the first
+    one attached ("user1 2 3"), and "4g" never matches spoken "four g".
+    Language-agnostic.
+    """
+
+    def process_string(self, s: str) -> str:
+        return _LETTER_DIGIT_BOUNDARY_RE.sub(" ", s)
+
+
 class CompoundSpokenNumbersToDigits(AbstractTransform):
     """Convert runs of spoken-number words to their digit form.
 
@@ -667,3 +682,15 @@ class NormalizeNameVariants(_TokenMapTransform):
 
     def __init__(self, language: str = "en") -> None:
         self._variants = get_language_data(language).name_variants
+
+
+class NormalizeColloquialForms(_TokenMapTransform):
+    """Expand spoken short forms: "hab" → "habe", "gibts" → "gibt es".
+
+    Uses `LanguageData.colloquial_forms` (German: `de_colloquial_forms`, which
+    documents the inclusion rule; English only maps "okay" → "ok"). Same
+    token lookup and placement constraints as `NormalizeSpellingVariants`.
+    """
+
+    def __init__(self, language: str = "en") -> None:
+        self._variants = get_language_data(language).colloquial_forms

@@ -9,8 +9,9 @@ Versions before 0.6.0 predate this changelog.
 ## [Unreleased]
 
 **WER numbers are not comparable across this release** for English text
-with typographic apostrophes, the spellings listed below, or given names
-with variant spellings.
+with typographic apostrophes, the spellings listed below, given names with
+variant spellings, or `okay`; for German text with spoken short forms; and
+for any language where letters and digits are written together.
 
 ### Added
 
@@ -25,6 +26,15 @@ with variant spellings.
   (ML-2059): the -isation nouns and plurals of -ise verbs already in the
   table (`authorisation` → `authorization`, `civilisation` →
   `civilization`) and -centre compounds (`telecentre` → `telecenter`).
+- `NormalizeColloquialForms` transform and `LanguageData.colloquial_forms`
+  field (ML-2122). German maps spoken short forms to the full form, so
+  transcripts that write what was said and transcripts that write the full
+  form score the same: `hab` → `habe`, `nen` → `einen`, `gibt's` → `gibt es`,
+  `aufm` → `auf dem`, `tschau` → `ciao`. Ambiguous forms are left alone:
+  `ne` (eine, nein or "right?"), `könnt` (also present tense) and `aufn`
+  (auf den or auf einen). The table and its inclusion rule live in
+  `languages/de_colloquial_forms.py`. English and German map `okay` → `ok`,
+  matching `OK` and `O.K.`
 
 ### Fixed
 
@@ -32,6 +42,11 @@ with variant spellings.
   ASCII form (ML-2059): `He’s married` normalized to `hes married` and
   `don’t` to `dont`; both now give `he is married` and `do not`. Quote marks
   at word edges (`‘sorry’`) are unchanged.
+- Letters and digits written together are split before digit runs are
+  expanded (ML-2122, all languages, new `SplitLetterDigitBoundaries`
+  transform): `user123` normalized to `user1 2 3` and `4g` stayed `4g`; they
+  now give `user 1 2 3` and `4 g`, matching `user one two three` and
+  `four g`.
 
 ## [0.8.0] - 2026-10-27
 
