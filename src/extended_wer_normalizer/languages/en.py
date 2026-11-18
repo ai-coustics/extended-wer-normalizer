@@ -126,6 +126,7 @@ EN = LanguageData(
     decimal_word="point",
     spelling_variants=EN_SPELLING_VARIANTS,
     name_variants=EN_NAME_VARIANTS,
+    colloquial_forms={"okay": "ok"},
 )
 
 register(EN)

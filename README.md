@@ -81,6 +81,7 @@ wer = jiwer.wer(reference, hypothesis, reference_transform=transform, hypothesis
 |---|---|
 | `CompoundSpokenNumbersToDigits` | `"twenty one"` → `"21"`, `"einundzwanzig"` → `"21"` (with `language="de"`) |
 | `ExpandDigitRuns` | `"0176"` → `"0 1 7 6"` |
+| `SplitLetterDigitBoundaries` | `"user123"` → `"user 123"`, `"4g"` → `"4 g"` |
 | `DigitWordsToChars` | `"zero one seven"` → `"0 1 7"` |
 | `NormalizeEmails` | `"user@example.com"` → `"user at example dot com"` |
 | `NormalizeURLs` | `"https://example.com/path"` → `"example dot com"` |
@@ -94,8 +95,9 @@ wer = jiwer.wer(reference, hypothesis, reference_transform=transform, hypothesis
 | `NormalizeSymbols` | `"cats & dogs"` → `"cats and dogs"` |
 | `SplitHyphenatedWords` | `"fixed-term"` → `"fixed term"` |
 | `NormalizeApostrophes` | `"he’s"` → `"he's"` (typographic apostrophe inside a word → ASCII, so contractions expand) |
-| `NormalizeSpellingVariants` | `"travelling"` → `"traveling"`, `"colour"` → `"color"` (British → American; English only) |
+| `NormalizeSpellingVariants` | `"travelling"` → `"traveling"`, `"colour"` → `"color"` (British → American); `"nochmal"` → `"noch mal"` (German joined → split) |
 | `NormalizeNameVariants` | `"stephen"` → `"steven"`, `"balthasar"` → `"balthazar"` (spellings of the same given name; English only) |
+| `NormalizeColloquialForms` | `"hab"` → `"habe"`, `"gibt's"` → `"gibt es"`, `"nen"` → `"einen"` (German); `"okay"` → `"ok"` (English and German) |
 | `RemoveFillerWords` | removes `um`, `uh`, `hmm`, `er`, `ah`, … |
 | `CollapseRepetitions` | `"yes yes yes yes"` → `"yes"` (collapses runs of 4+; configurable via `max_repeats`) |
 | `ExpandFrenchElisions` | `"j'aime"` → `"j aime"`, `"qu'il"` → `"qu il"` (French only) |
@@ -108,8 +110,8 @@ The English pipeline applies transforms left-to-right in a single pass:
 
 1. **Pattern-specific** (before punctuation is stripped): email, URL, thousands separators (`12,500` → `12500`), symbol, abbreviation, currency, percentage, ordinal
 2. **Core**: contractions, with typographic apostrophes accepted (`I'm`, `I’m` → `i am`), compound number words to digits (`twenty one` → `21`), decimals (`3.5` → `3 point 5`), spoken currency conjunction (`5 dollars and 99 cents` → `5 dollars 99 cents`), lowercase, intra-word hyphen split (`fixed-term` → `fixed term`), punctuation removal
-3. **Spelling and name variants** (English only): British → American (`travelling` → `traveling`), given-name spellings (`stephen` → `steven`)
-4. **Digit normalization**: expand digit runs (`0176` → `0 1 7 6`, `21` → `2 1`), convert digit words (`zero` → `0`)
+3. **Spelling and name variants**: British → American (`travelling` → `traveling`), German joined → split (`nochmal` → `noch mal`), English given-name spellings (`stephen` → `steven`); spoken short forms (`okay` → `ok`; German `hab` → `habe`)
+4. **Digit normalization**: split letters from digits (`user123` → `user 1 2 3`), expand digit runs (`0176` → `0 1 7 6`, `21` → `2 1`), convert digit words (`zero` → `0`)
 5. **Cleanup**: filler words, repetition collapse
 
 ## Supported languages
