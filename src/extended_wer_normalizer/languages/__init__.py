@@ -38,7 +38,8 @@ class LanguageData:
     "3.5" and "three point five" normalize to.
 
     `spelling_variants` maps dialect spellings to one canonical form
-    (English: British → American). Languages without such a map leave it
+    (English: British → American; German: joined → split, "nochmal" →
+    "noch mal"). Languages without such a map leave it
     empty, making `NormalizeSpellingVariants` a no-op for them.
 
     `name_variants` maps spellings of the same given name to one canonical

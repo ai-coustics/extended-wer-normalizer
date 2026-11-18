@@ -663,8 +663,9 @@ class NormalizeSpellingVariants(_TokenMapTransform):
     `ToLowerCase` (table keys are lowercase) and after `RemovePunctuation`
     (so tokens carry no attached punctuation for the split to isolate).
 
+    German maps joined spellings to split ones ("nochmal" → "noch mal").
     No-op for languages with an empty `spelling_variants` map (currently
-    everything but "en").
+    everything but "en" and "de").
     """
 
     def __init__(self, language: str = "en") -> None:

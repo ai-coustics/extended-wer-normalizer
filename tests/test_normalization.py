@@ -953,8 +953,7 @@ def test_spelling_variant_errors_have_nonzero_wer(ref, hyp, description):
 
 @pytest.mark.parametrize("language", ["de", "fr"])
 def test_spelling_variants_noop_for_other_languages(language):
-    # Only English ships a spelling-variant table; other pipelines must not
-    # rewrite these tokens.
+    # English spellings must not be rewritten by other languages' tables.
     assert normalize_for_wer("travelling colour", language=language) == "travelling colour"
 
 
@@ -1118,6 +1117,25 @@ def test_german_colloquial_sentences_zero_wer(ref, hyp):
 )
 def test_german_ambiguous_short_forms_unchanged(text, expected):
     assert normalize_for_wer(text, language="de") == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        ("Sag das bitte nochmal.", "Sag das bitte noch mal."),
+        ("Es regnet, sodass wir bleiben.", "Es regnet, so dass wir bleiben."),
+        ("Wieviel kostet das?", "Wie viel kostet das?"),
+        ("Wieviele sind es?", "Wie viele sind es?"),
+        ("Das geht garnicht.", "Das geht gar nicht."),
+        ("Ich bin zuhause.", "Ich bin zu Hause."),
+    ],
+)
+def test_german_joined_and_split_spellings_zero_wer(ref, hyp):
+    assert wer_de(ref, hyp) == 0.0
+
+
+def test_german_zurzeit_not_split():
+    assert normalize_for_wer("Zurzeit nicht.", language="de") == "zurzeit nicht"
 
 
 def test_german_ne_and_eine_still_differ():

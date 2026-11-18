@@ -35,6 +35,11 @@ for any language where letters and digits are written together.
   (auf den or auf einen). The table and its inclusion rule live in
   `languages/de_colloquial_forms.py`. English and German map `okay` → `ok`,
   matching `OK` and `O.K.`
+- German spelling variants (ML-2122): words written joined or split map to
+  the split form, `nochmal` → `noch mal`, `sodass` → `so dass`, `wieviel(e)`
+  → `wie viel(e)`, `garnicht` → `gar nicht`, `zuhause` → `zu hause`. The
+  last one also merges the noun `das Zuhause` with the adverb. `zurzeit` is
+  left out because it means something different from `zur Zeit`.
 
 ### Fixed
 
