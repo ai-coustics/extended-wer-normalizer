@@ -38,8 +38,17 @@ class LanguageData:
     "3.5" and "three point five" normalize to.
 
     `spelling_variants` maps dialect spellings to one canonical form
-    (English: British → American). Languages without such a map leave it
+    (English: British → American; German: joined → split, "nochmal" →
+    "noch mal"). Languages without such a map leave it
     empty, making `NormalizeSpellingVariants` a no-op for them.
+
+    `name_variants` maps spellings of the same given name to one canonical
+    spelling ("stephen" → "steven"); empty means `NormalizeNameVariants` is
+    a no-op.
+
+    `colloquial_forms` maps spoken short forms to their full written form
+    ("hab" → "habe", "gibts" → "gibt es", "okay" → "ok"); empty means
+    `NormalizeColloquialForms` is a no-op.
     """
 
     code: str
@@ -59,6 +68,8 @@ class LanguageData:
     thousands_separators: str
     decimal_word: str
     spelling_variants: dict[str, str] = field(default_factory=dict)
+    name_variants: dict[str, str] = field(default_factory=dict)
+    colloquial_forms: dict[str, str] = field(default_factory=dict)
 
 
 _REGISTRY: dict[str, LanguageData] = {}

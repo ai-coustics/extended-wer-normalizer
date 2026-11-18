@@ -9,6 +9,8 @@ import jiwer
 import pytest
 
 from extended_wer_normalizer import normalize_for_wer
+from extended_wer_normalizer.languages.de_colloquial_forms import DE_COLLOQUIAL_FORMS
+from extended_wer_normalizer.languages.en_name_variants import EN_NAME_VARIANTS
 from extended_wer_normalizer.languages.en_spelling_variants import (
     _ADDITIONS,
     _UPSTREAM,
@@ -19,9 +21,11 @@ from extended_wer_normalizer.transforms import (
     DropCurrencyConjunction,
     ExpandAbbreviations,
     NormalizeApostrophes,
+    NormalizeColloquialForms,
     NormalizeCurrency,
     NormalizeDecimals,
     NormalizeEmails,
+    NormalizeNameVariants,
     NormalizeOrdinals,
     NormalizePercentages,
     NormalizeSpellingVariants,
@@ -30,6 +34,7 @@ from extended_wer_normalizer.transforms import (
     RemoveFillerWords,
     RemoveThousandsSeparators,
     SplitHyphenatedWords,
+    SplitLetterDigitBoundaries,
 )
 
 # ---------------------------------------------------------------------------
@@ -948,8 +953,7 @@ def test_spelling_variant_errors_have_nonzero_wer(ref, hyp, description):
 
 @pytest.mark.parametrize("language", ["de", "fr"])
 def test_spelling_variants_noop_for_other_languages(language):
-    # Only English ships a spelling-variant table; other pipelines must not
-    # rewrite these tokens.
+    # English spellings must not be rewritten by other languages' tables.
     assert normalize_for_wer("travelling colour", language=language) == "travelling colour"
 
 
@@ -1014,6 +1018,176 @@ def test_spelling_table_canonical_side_is_american():
 
 
 # ===========================================================================
+# NAME VARIANTS
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("stephen", "steven"),
+        ("balthasar", "balthazar"),
+        ("katherine and kathryn", "catherine and catherine"),
+        # Canonical spellings and non-name words pass through.
+        ("steven", "steven"),
+        ("mark the grey door", "mark the grey door"),
+        ("", ""),
+    ],
+)
+def test_normalize_name_variants(input_text, expected):
+    assert NormalizeNameVariants().process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        ("Balthasar arrived", "Balthazar arrived"),
+        ("Stephen and Jon", "Steven and John"),
+        ("Mohammed’s brother", "Muhammad's brother"),
+    ],
+)
+def test_name_variants_zero_wer(ref, hyp):
+    assert wer(ref, hyp) == 0.0
+
+
+def test_name_variants_different_names_nonzero_wer():
+    assert wer("Steven arrived", "Stefan arrived") > 0.0
+
+
+@pytest.mark.parametrize("language", ["de", "fr", "es"])
+def test_name_variants_english_only(language):
+    assert normalize_for_wer("Stephen", language=language) == "stephen"
+
+
+def test_name_table_is_idempotent_and_disjoint_from_spelling_table():
+    assert not set(EN_NAME_VARIANTS.values()) & set(EN_NAME_VARIANTS)
+    assert not set(EN_NAME_VARIANTS) & set(EN_SPELLING_VARIANTS)
+    # Names run after spellings, so a canonical name that is also a spelling
+    # key would be rewritten again on a second pass.
+    assert not set(EN_NAME_VARIANTS.values()) & set(EN_SPELLING_VARIANTS)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [("the Allen key", "the allen key"), ("Sofia, Bulgaria", "sofia bulgaria")],
+)
+def test_name_variants_leave_common_words_alone(text, expected):
+    assert normalize_for_wer(text) == expected
+
+
+# ===========================================================================
+# COLLOQUIAL FORMS (German short forms, okay → ok)
+# ===========================================================================
+
+
+@pytest.mark.parametrize("short, full", sorted(DE_COLLOQUIAL_FORMS.items()))
+def test_german_colloquial_form_matches_full_form(short, full):
+    ref = f"also gut {short} danke"
+    hyp = f"also gut {full} danke"
+    assert wer_de(ref, hyp) == 0.0
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        ("Ich hab nen Termin.", "Ich habe einen Termin."),
+        ("Gibt's noch was?", "Gibt es noch was?"),
+        ("Gibt’s noch was?", "gibts noch was"),
+        ("Wär super, wenn das ginge.", "Wäre super, wenn das ginge."),
+        ("Liegt aufm Tisch.", "Liegt auf dem Tisch."),
+        ("Okay, tschau!", "OK, ciao!"),
+    ],
+)
+def test_german_colloquial_sentences_zero_wer(ref, hyp):
+    assert wer_de(ref, hyp) == 0.0
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        # "ne" can mean "eine", "nein" or "nicht wahr"; "nee" means "nein".
+        ("Ne, danke.", "ne danke"),
+        ("Nee, das wäre alles.", "nee das wäre alles"),
+        ("Das passt, oder ne?", "das passt oder ne"),
+        # Present tense "ihr könnt" is not "könnte".
+        ("Ihr könnt kommen.", "ihr könnt kommen"),
+        # "aufn" is "auf den" or "auf einen".
+        ("Leg es aufn Stapel.", "leg es aufn stapel"),
+    ],
+)
+def test_german_ambiguous_short_forms_unchanged(text, expected):
+    assert normalize_for_wer(text, language="de") == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp",
+    [
+        ("Sag das bitte nochmal.", "Sag das bitte noch mal."),
+        ("Es regnet, sodass wir bleiben.", "Es regnet, so dass wir bleiben."),
+        ("Wieviel kostet das?", "Wie viel kostet das?"),
+        ("Wieviele sind es?", "Wie viele sind es?"),
+        ("Das geht garnicht.", "Das geht gar nicht."),
+        ("Ich bin zuhause.", "Ich bin zu Hause."),
+    ],
+)
+def test_german_joined_and_split_spellings_zero_wer(ref, hyp):
+    assert wer_de(ref, hyp) == 0.0
+
+
+def test_german_zurzeit_not_split():
+    assert normalize_for_wer("Zurzeit nicht.", language="de") == "zurzeit nicht"
+
+
+def test_german_ne_and_eine_still_differ():
+    assert wer_de("Ich hätte gern eine Pizza", "Ich hätte gern ne Pizza") > 0.0
+
+
+def test_okay_matches_ok():
+    assert wer("Okay, sounds good", "OK, sounds good") == 0.0
+    assert wer_de("Okay, passt", "OK, passt") == 0.0
+
+
+def test_colloquial_forms_noop_for_french():
+    assert NormalizeColloquialForms(language="fr").process_string("okay hab") == "okay hab"
+
+
+def test_colloquial_table_is_idempotent():
+    keys = set(DE_COLLOQUIAL_FORMS)
+    assert not {word for full in DE_COLLOQUIAL_FORMS.values() for word in full.split()} & keys
+
+
+# ===========================================================================
+# LETTER/DIGIT BOUNDARIES
+# ===========================================================================
+
+
+@pytest.mark.parametrize(
+    "input_text, expected",
+    [
+        ("user123", "user 123"),
+        ("4g", "4 g"),
+        ("a4b", "a 4 b"),
+        ("3 point 5", "3 point 5"),
+        ("", ""),
+    ],
+)
+def test_split_letter_digit_boundaries(input_text, expected):
+    assert SplitLetterDigitBoundaries().process_string(input_text) == expected
+
+
+@pytest.mark.parametrize(
+    "ref, hyp, language",
+    [
+        ("kunde345@outlook.de", "kunde 3 4 5 at outlook punkt de", "de"),
+        ("my id is user123", "my id is user one two three", "en"),
+        ("4G network", "four G network", "en"),
+    ],
+)
+def test_letters_and_digits_split_zero_wer(ref, hyp, language):
+    assert normalize_for_wer(ref, language=language) == normalize_for_wer(hyp, language=language)
+
+
+# ===========================================================================
 # IDEMPOTENCE — all new transforms applied twice = applied once
 # ===========================================================================
 
@@ -1026,6 +1200,8 @@ def test_spelling_table_canonical_side_is_american():
         "um I I think it costs $3.50",
         "visit https://my-site.org or call us",
         "I am travelling to the centre, my favourite colour",
+        "He’s Stephen’s friend from the telecentre",
+        "okay, user123 has a 4g plan",
     ],
 )
 def test_full_pipeline_idempotent(text):

@@ -14,9 +14,11 @@ from .transforms import (
     ExpandDigitRuns,
     ExpandFrenchElisions,
     NormalizeApostrophes,
+    NormalizeColloquialForms,
     NormalizeCurrency,
     NormalizeDecimals,
     NormalizeEmails,
+    NormalizeNameVariants,
     NormalizeOrdinals,
     NormalizePercentages,
     NormalizeSpellingVariants,
@@ -25,6 +27,7 @@ from .transforms import (
     RemoveFillerWords,
     RemoveThousandsSeparators,
     SplitHyphenatedWords,
+    SplitLetterDigitBoundaries,
 )
 
 __all__ = [
@@ -42,9 +45,11 @@ __all__ = [
     "ExpandDigitRuns",
     "ExpandFrenchElisions",
     "NormalizeApostrophes",
+    "NormalizeColloquialForms",
     "NormalizeCurrency",
     "NormalizeDecimals",
     "NormalizeEmails",
+    "NormalizeNameVariants",
     "NormalizeOrdinals",
     "NormalizePercentages",
     "NormalizeSpellingVariants",
@@ -53,6 +58,7 @@ __all__ = [
     "RemoveFillerWords",
     "RemoveThousandsSeparators",
     "SplitHyphenatedWords",
+    "SplitLetterDigitBoundaries",
 ]
 
 
@@ -99,7 +105,8 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
         steps.append(jiwer.ExpandCommonEnglishContractions())
     elif language == "fr":
         steps.append(ExpandFrenchElisions())
-    # German has no separate contraction expansion step.
+    # German short forms ("gibt's") are expanded after punctuation removal,
+    # by NormalizeColloquialForms.
 
     steps.extend(
         [
@@ -126,6 +133,9 @@ def _build_pipeline(language: str, max_repeats: int = DEFAULT_MAX_REPEATS) -> ji
             # Spelling variants map whole tokens, so they need punctuation
             # already removed ("colour," → "colour") and lowercase applied.
             NormalizeSpellingVariants(language),
+            NormalizeNameVariants(language),
+            NormalizeColloquialForms(language),
+            SplitLetterDigitBoundaries(),
             ExpandDigitRuns(),
             DigitWordsToChars(language),
             jiwer.RemoveMultipleSpaces(),
