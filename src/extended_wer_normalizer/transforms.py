@@ -35,19 +35,22 @@ class ExpandDigitRuns(AbstractTransform):
         return re.sub(r"(?<![.,\d])\d{2,}", lambda m: " ".join(m.group()), s)
 
 
-_LETTER_DIGIT_BOUNDARY_RE = re.compile(r"(?<=[^\W\d_])(?=\d)|(?<=\d)(?=[^\W\d_])")
+# Digits preceded by a letter, plus the letter that follows them, if any.
+_DIGITS_AFTER_LETTER_RE = re.compile(r"(?<=[^\W\d_])(\d+)([^\W\d_])?")
 
 
 class SplitLetterDigitBoundaries(AbstractTransform):
-    """Put a space between letters and digits: "user123" → "user 123".
+    """Separate digits embedded in a word: "user123" → "user 123".
 
     Without it, ExpandDigitRuns splits only the digits and leaves the first
-    one attached ("user1 2 3"), and "4g" never matches spoken "four g".
-    Language-agnostic.
+    one attached ("user1 2 3"). Only digits that follow a letter are split
+    off, so numbers with a unit or suffix ("5mm", "4th") stay one token;
+    splitting those would expose "mm" to filler removal and change ordinal
+    word counts. Language-agnostic.
     """
 
     def process_string(self, s: str) -> str:
-        return _LETTER_DIGIT_BOUNDARY_RE.sub(" ", s)
+        return _DIGITS_AFTER_LETTER_RE.sub(lambda m: f" {m[1]} {m[2]}" if m[2] else f" {m[1]}", s)
 
 
 class CompoundSpokenNumbersToDigits(AbstractTransform):

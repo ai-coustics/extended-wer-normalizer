@@ -37,7 +37,7 @@ DE_COLLOQUIAL_FORMS: dict[str, str] = {
     "gibts": "gibt es",
     "ham": "haben",
     "is": "ist",
-    # Spelling variants.
+    # Informal spellings.
     "okay": "ok",
     "tschau": "ciao",
 }

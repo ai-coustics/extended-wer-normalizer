@@ -10,8 +10,9 @@ Versions before 0.6.0 predate this changelog.
 
 **WER numbers are not comparable across this release** for English text
 with typographic apostrophes, the spellings listed below, given names with
-variant spellings, or `okay`; for German text with spoken short forms; and
-for any language where letters and digits are written together.
+variant spellings, or `okay`; for German text with spoken short forms or
+joined spellings (`nochmal`); and for English, German and French text with
+digits inside a word (`user123`).
 
 ### Added
 
@@ -47,11 +48,11 @@ for any language where letters and digits are written together.
   ASCII form (ML-2059): `He’s married` normalized to `hes married` and
   `don’t` to `dont`; both now give `he is married` and `do not`. Quote marks
   at word edges (`‘sorry’`) are unchanged.
-- Letters and digits written together are split before digit runs are
-  expanded (ML-2122, all languages, new `SplitLetterDigitBoundaries`
-  transform): `user123` normalized to `user1 2 3` and `4g` stayed `4g`; they
-  now give `user 1 2 3` and `4 g`, matching `user one two three` and
-  `four g`.
+- Digits inside a word are split off before digit runs are expanded
+  (ML-2122, English, German and French, new `SplitLetterDigitBoundaries`
+  transform): `user123` normalized to `user1 2 3` and now gives
+  `user 1 2 3`, matching `user one two three`. Numbers with a unit or
+  suffix (`5mm`, `4th`) are unchanged.
 
 ## [0.8.0] - 2026-10-27
 

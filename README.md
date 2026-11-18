@@ -81,7 +81,7 @@ wer = jiwer.wer(reference, hypothesis, reference_transform=transform, hypothesis
 |---|---|
 | `CompoundSpokenNumbersToDigits` | `"twenty one"` → `"21"`, `"einundzwanzig"` → `"21"` (with `language="de"`) |
 | `ExpandDigitRuns` | `"0176"` → `"0 1 7 6"` |
-| `SplitLetterDigitBoundaries` | `"user123"` → `"user 123"`, `"4g"` → `"4 g"` |
+| `SplitLetterDigitBoundaries` | `"user123"` → `"user 123"` (digits inside a word; `"5mm"` and `"4th"` are unchanged) |
 | `DigitWordsToChars` | `"zero one seven"` → `"0 1 7"` |
 | `NormalizeEmails` | `"user@example.com"` → `"user at example dot com"` |
 | `NormalizeURLs` | `"https://example.com/path"` → `"example dot com"` |

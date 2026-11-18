@@ -1151,9 +1151,18 @@ def test_colloquial_forms_noop_for_french():
     assert NormalizeColloquialForms(language="fr").process_string("okay hab") == "okay hab"
 
 
-def test_colloquial_table_is_idempotent():
-    keys = set(DE_COLLOQUIAL_FORMS)
-    assert not {word for full in DE_COLLOQUIAL_FORMS.values() for word in full.split()} & keys
+def test_german_tables_are_idempotent():
+    from extended_wer_normalizer.languages import get_language_data
+
+    de = get_language_data("de")
+    keys = set(de.spelling_variants) | set(de.colloquial_forms)
+    outputs = {
+        word
+        for table in (de.spelling_variants, de.colloquial_forms)
+        for full in table.values()
+        for word in full.split()
+    }
+    assert not outputs & keys
 
 
 # ===========================================================================
@@ -1165,8 +1174,12 @@ def test_colloquial_table_is_idempotent():
     "input_text, expected",
     [
         ("user123", "user 123"),
-        ("4g", "4 g"),
-        ("a4b", "a 4 b"),
+        ("abc123def", "abc 123 def"),
+        ("a1b2", "a 1 b 2"),
+        # Numbers with a unit or suffix stay one token.
+        ("5mm", "5mm"),
+        ("4th", "4th"),
+        ("4g", "4g"),
         ("3 point 5", "3 point 5"),
         ("", ""),
     ],
@@ -1180,11 +1193,18 @@ def test_split_letter_digit_boundaries(input_text, expected):
     [
         ("kunde345@outlook.de", "kunde 3 4 5 at outlook punkt de", "de"),
         ("my id is user123", "my id is user one two three", "en"),
-        ("4G network", "four G network", "en"),
     ],
 )
 def test_letters_and_digits_split_zero_wer(ref, hyp, language):
     assert normalize_for_wer(ref, language=language) == normalize_for_wer(hyp, language=language)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [("10mm drill", "1 0mm drill"), ("the 4th floor", "the 4th floor")],
+)
+def test_numbers_with_suffix_keep_suffix(text, expected):
+    assert normalize_for_wer(text) == expected
 
 
 # ===========================================================================
@@ -1201,7 +1221,7 @@ def test_letters_and_digits_split_zero_wer(ref, hyp, language):
         "visit https://my-site.org or call us",
         "I am travelling to the centre, my favourite colour",
         "He’s Stephen’s friend from the telecentre",
-        "okay, user123 has a 4g plan",
+        "okay, user123 has a 4g plan on the 4th floor",
     ],
 )
 def test_full_pipeline_idempotent(text):
